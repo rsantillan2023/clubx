@@ -54,3 +54,4 @@ coverage/
 
 # Repositorio git anidado (usamos un solo repo en la raíz)
 backend/.git/
+frontend/.git/
