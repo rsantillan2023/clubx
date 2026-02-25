@@ -11,6 +11,7 @@ out/
 # Variables de entorno (no subir secretos)
 .env
 .env.*
+ (2).env
 .env-local
 .env-dev
 .env-prod
