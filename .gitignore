@@ -50,6 +50,9 @@ coverage/
 *.sqlite
 *.db
 
+# SQL grandes (exportaciones / dumps, no subir a GitHub)
+22-08-25 (1)/
+
 # Husky interno (se puede regenerar)
 # .husky/_
 
