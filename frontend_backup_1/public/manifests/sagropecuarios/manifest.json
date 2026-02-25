@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "Yo Servicios Agropecuarios App",
+  "short_name": "Serv. Agrop",
+  "handle_links": "preferred",
+  "description": "Yo Servicios Agropecuarios sitio oficial creado por Sooft Technology",
+  "icons": [
+    {
+      "src": "./img/icons2/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./img/icons2/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./img/icons/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "./../../",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#197f66",
+  "theme_color": "#1E3D58",
+  "prefer_related_applications": false,
+  "scope": "./../../",
+  "shortcuts": [
+    {
+      "name": "Yo Servicios Agropecuarios",
+      "short_name": "Yo Servicios Agropecuarios sitio oficial",
+      "description": "Yo Servicios Agropecuarios sitio oficial app",
+      "url": "/",
+      "icons": [
+        {
+          "src": "./img/icons/android-chrome-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+  api:
+    container_name: sooft_degira
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 3015:3015

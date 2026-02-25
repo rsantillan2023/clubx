@@ -1,0 +1,10 @@
+*{
+    font-family: 'Nunito', sans-serif !important;
+}
+
+
+
+.theme--light.v-data-table >
+.v-data-table__wrapper > table > thead > tr > th {
+    color: #ce5044 !important;
+}

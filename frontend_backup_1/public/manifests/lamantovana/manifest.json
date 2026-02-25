@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "La Mantovana",
+  "short_name": "La Mantovana",
+  "handle_links": "preferred",
+  "description": "La Mantovana sitio oficial creado por Sooft Technology",
+  "icons": [
+    {
+      "src": "./img/icons/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./img/icons/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "./img/icons/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "./../../",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#004190",
+  "theme_color": "#004190",
+  "prefer_related_applications": false,
+  "scope": "./../../",
+  "shortcuts": [
+    {
+      "name": "La Mantovana",
+      "short_name": "La Mantovana sitio oficial",
+      "description": "La Mantovana sitio oficial app",
+      "url": "/",
+      "icons": [
+        {
+          "src": "./img/icons/android-chrome-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

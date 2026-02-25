@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "AGD App",
+  "short_name": "AGD",
+  "handle_links": "preferred",
+  "description": "AGD sitio oficial creado por Sooft Technology",
+  "icons": [
+    {
+      "src": "./img/icons/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./img/icons/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "./img/icons/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "./../../",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#35305b",
+  "theme_color": "#1E3D58",
+  "prefer_related_applications": false,
+  "scope": "./../../",
+  "shortcuts": [
+    {
+      "name": "AGD",
+      "short_name": "AGD sitio oficial",
+      "description": "AGD sitio oficial app",
+      "url": "/",
+      "icons": [
+        {
+          "src": "./img/icons/android-chrome-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "Club X App",
+  "short_name": "Club X",
+  "handle_links": "preferred",
+  "description": "Club X sitio oficial creado por Sooft Technology",
+  "icons": [
+    {
+      "src": "./img/icons/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./img/icons/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "./img/icons/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "./../../",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ce5044",
+  "theme_color": "#ce5044",
+  "prefer_related_applications": false,
+  "scope": "./../../",
+  "shortcuts": [
+    {
+      "name": "YoMob",
+      "short_name": "YoMob sitio oficial",
+      "description": "YoMob sitio oficial app",
+      "url": "/",
+      "icons": [
+        {
+          "src": "./img/icons/android-chrome-192x192.png",
+          "sizes": "192x192" }
+        ]
+    }
+  ]
+}

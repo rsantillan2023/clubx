@@ -1,0 +1,56 @@
+# Dependencias
+node_modules/
+
+# Builds y compilados
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Variables de entorno (no subir secretos)
+.env
+.env.*
+.env-local
+.env-dev
+.env-prod
+!.env.example
+
+# Logs y caché
+logs/
+*.log
+npm-debug.log*
+.cache/
+.parcel-cache/
+.eslintcache
+.nyc_output/
+coverage/
+
+# IDE y sistema
+.idea/
+.vscode/
+.vscode-test
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Opcional: backups (descomenta si no quieres subirlos)
+# frontend_backup_1/
+# backend_backup_1/
+
+# Lock files (opcional: algunos equipos los incluyen)
+# package-lock.json
+# yarn.lock
+
+# Base de datos local / archivos generados
+*.sqlite
+*.db
+
+# Husky interno (se puede regenerar)
+# .husky/_
+
+# Repositorio git anidado (usamos un solo repo en la raíz)
+backend/.git/

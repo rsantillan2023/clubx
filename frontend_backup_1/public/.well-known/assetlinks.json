@@ -1,0 +1,10 @@
+[{
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.sooft.pwa",
+      "sha256_cert_fingerprints": [
+        "73:9C:3A:0B:5B:AE:54:A4:8E:5F:2C:A0:D7:A3:58:9A:40:96:05:73:75:9D:3F:C2:6D:15:C3:4A:C4:03:13:DE"
+      ]
+    }
+}]

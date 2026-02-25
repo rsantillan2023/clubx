@@ -1,0 +1,12 @@
+.ios .v-item-group.v-bottom-navigation .v-btn{
+    padding-bottom: 18px!important;
+}
+.ios .v-item-group.v-bottom-navigation {
+    height: 82px!important;
+}
+.ios .v-item-group.v-bottom-navigation--shift .v-btn--active .v-btn__content > *:not(.v-icon) {
+    top: calc(100% - 37px)!important;
+}
+.ios .v-speed-dial--bottom {
+    bottom: 50px!important;
+}
