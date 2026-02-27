@@ -81,16 +81,15 @@ No subas `.env` al repo; configúralas solo en Railway.
 - En el mismo proyecto Railway: **+ New** → **GitHub Repo** → elige otra vez el repo `clubx` (o **+ New** → **Empty Service** y enlaza el mismo repo).
 - En **Settings** del nuevo servicio:
   - **Root Directory**: `frontend`
-  - **Build Command**: `npm install && npm run build`
-  - **Start Command**: `npx serve -s dist -l 3000`  
-    (sirve la carpeta `dist` de Vue; el puerto puede ser el que Railway asigne si usas `PORT`).
+  - Si usas el **Dockerfile** del frontend (recomendado): **no pongas** Build Command ni Start Command; déjalos vacíos. La imagen usa nginx para servir los estáticos.
+  - Si no usas Dockerfile (solo Nixpacks): **Build Command** `npm install && npm run build`, **Start Command** `npx serve -s dist -l 3000`.
 - **Watch Paths** (opcional): `frontend/**`
 
 ### 4.2 Variables de entorno (Frontend)
 
-El frontend necesita apuntar al **backend en Railway**, no a `localhost`. Usa la URL que generaste en el paso 3.3.
+El frontend necesita apuntar al **backend en Railway**, no a `localhost`. Como el front usa **Dockerfile**, estas variables se usan **en tiempo de build** (Railway las pasa como build args). Deben estar configuradas en **Variables** del servicio frontend **antes** de que se construya la imagen.
 
-Sustituye `https://clubx-backend-xxxx.up.railway.app` por tu URL real:
+Sustituye `https://clubx-backend-xxxx.up.railway.app` por tu URL real (ej. `https://clubz.up.railway.app`):
 
 | Variable | Valor |
 |----------|--------|
