@@ -230,6 +230,17 @@ const routes = [
     props: true,
   },
   {
+    path: "/quienes-pagan-a-la-salida",
+    name: "quienesPaganALaSalida",
+    meta: {
+      title: "Quiénes pagan a la salida",
+      requiresAuth: true,
+      requiresAccess: true
+    },
+    component: () => import("../views/access/quienesPaganALaSalida.vue"),
+    props: true,
+  },
+  {
     path: "/operations",
     name: "operations",
     meta: {
@@ -282,6 +293,17 @@ const routes = [
       requiresAccess: true
     },
     component: () => import("../views/admin/PricesManagement.vue"),
+    props: true,
+  },
+  {
+    path: "/esquema-pago-mensual",
+    name: "esquemaPagoMensual",
+    meta: {
+      title: "Esquema de pago mensual",
+      requiresAuth: true,
+      requiresAccess: true
+    },
+    component: () => import("../views/admin/EsquemaPagoMensual.vue"),
     props: true,
   },
   {

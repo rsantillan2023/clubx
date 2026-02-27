@@ -49,6 +49,13 @@ const partnerIncludeable: Includeable = {
   include: [statePartnerIncludeable, visitTypeForPartner],
 }
 
+/** Asegura id_role numérico para Operation: roles puede ser number[] o Array<{ id_role: number }> */
+const getFirstRoleId = (roles: number[] | Array<{ id_role?: number }> | undefined): number | undefined => {
+  if (!roles || !Array.isArray(roles) || roles.length === 0) return undefined;
+  const first = roles[0];
+  return typeof first === 'number' ? first : (first as { id_role?: number })?.id_role;
+};
+
 
 export const getPartner = async (partnerParams: IPartnerParams, roles: number[], id_user: number, transaction?: Transaction) => {
   try {
@@ -89,7 +96,7 @@ export const getPartner = async (partnerParams: IPartnerParams, roles: number[],
           operation_date: argentinianDate(new Date()),
           id_role: roles
         }),
-        id_role: roles[0],
+        id_role: getFirstRoleId(roles),
         operation_date: argentinianDate(new Date()),
         id_day: dayOfWeek,
       }, { transaction });
@@ -135,6 +142,22 @@ export const getPartner = async (partnerParams: IPartnerParams, roles: number[],
     });
 
     const last_visit = lastVisits.length > 0 && lastVisits[0].last_visit ? lastVisits[0].last_visit : null;
+
+    // Validación al acceso: si hace más de un año que no visita y está en estado "normal", marcar como socio no frecuente y devolver estado actualizado (frontend muestra "Reactivar Membresía")
+    // Solo aplicar si hay al menos una última visita conocida y es mayor a un año. No marcar como no frecuente cuando last_visit es null (socio nuevo o sin visitas).
+    const yearAgo = argentinianDate(new Date(new Date().setFullYear(new Date().getFullYear() - 1)));
+    const partnerJson = partners.toJSON() as IPartner & { state?: { id_state: number; actions?: { id_action: number } } };
+    const id_state = partnerJson.id_state;
+    const isNormalState = id_state != null && ![EPartnerState.SOCIO_NO_FRECUENTE, EPartnerState.SOCIO_SUSPENDIDO, EPartnerState.SOCIO_EXPULSADO, EPartnerState.SOCIO_INVITADO].includes(id_state);
+    const lastVisitTooOld = last_visit != null && new Date(last_visit).getTime() <= yearAgo.getTime();
+    if (isNormalState && lastVisitTooOld && (partnerId ?? 0) > 0) {
+      await Partner.update(
+        { id_state: EPartnerState.SOCIO_NO_FRECUENTE },
+        { where: { id_partner: partnerId }, transaction }
+      );
+      const reloaded = await Partner.findByPk(partnerId, { include, transaction });
+      if (reloaded) partners = reloaded;
+    }
 
     if (visit.length === 0) {
       const partnerData: IPartnerDNIAPI = {
@@ -184,7 +207,7 @@ export const getPartner = async (partnerParams: IPartnerParams, roles: number[],
         operation_date: argentinianDate(new Date()),
         id_role: roles
       }),
-      id_role: roles[0],
+      id_role: getFirstRoleId(roles),
       operation_date: argentinianDate(new Date()),
       id_day: dayOfWeek,
     }, { transaction });
@@ -251,7 +274,7 @@ export const searchPartner = async (
           operation_date: argentinianDate(new Date()),
           id_role: roles
         }),
-        id_role: roles[0],
+        id_role: getFirstRoleId(roles),
         operation_date: argentinianDate(new Date()),
         id_day: dayOfWeek,
       }, { transaction });
@@ -334,7 +357,7 @@ export const searchPartner = async (
           operation_date: argentinianDate(new Date()),
           id_role: roles
         }),
-        id_role: roles[0],
+        id_role: getFirstRoleId(roles),
         operation_date: argentinianDate(new Date()),
         id_day: dayOfWeek,
       }, { transaction });
@@ -426,7 +449,7 @@ export const searchPartner = async (
         operation_date: argentinianDate(new Date()),
         id_role: roles
       }),
-      id_role: roles[0],
+      id_role: getFirstRoleId(roles),
       operation_date: argentinianDate(new Date()),
       id_day: dayOfWeek,
     }, { transaction });
@@ -489,6 +512,10 @@ export const PartnersInClub = async (
 
     visit.rows = visit.rows.map((visit: Model<IVisitInsideAPI>) => {
       const currentVisit = visit.toJSON();
+      const entryPaid = Number(currentVisit.entry_amount_paid || 0);
+      const hadToPaid = Number(currentVisit.had_to_paid || 0);
+      const pendienteEntrada = Math.max(0, hadToPaid - entryPaid);
+      const esPagoAlSalir = (String(currentVisit.entry_visit_obs || "")).includes("PAGAR_AL_SALIR");
       return {
         ...visit.toJSON(),
         visit_date: currentVisit.visit_date,
@@ -497,7 +524,7 @@ export const PartnersInClub = async (
         hour_entry: currentVisit.hour_entry,
         id_day: currentVisit.id_day,
         last_visit: currentVisit.last_visit,
-        entry_amount_paid: Number(currentVisit.entry_amount_paid || 0),
+        entry_amount_paid: entryPaid,
         extra_entry: Number(currentVisit.extra_entry || 0),
         extra_entry_obs: currentVisit.extra_entry_obs || '',
         visit_amount_consumed: Number(currentVisit.visit_amount_consumed || 0),
@@ -506,7 +533,9 @@ export const PartnersInClub = async (
         extra_exit_obs: currentVisit.extra_exit_obs || '',
         entry_visit_obs: currentVisit.entry_visit_obs || '',
         other_visit_obs: currentVisit.other_visit_obs || '',
-        total_payed: Number(currentVisit.entry_amount_paid || 0) + Number(currentVisit.extra_entry || 0) + Number(currentVisit.visit_amount_consumed || 0) + Number(currentVisit.exit_amount_payed || 0) + Number(currentVisit.extra_exit || 0)
+        total_payed: Number(currentVisit.entry_amount_paid || 0) + Number(currentVisit.extra_entry || 0) + Number(currentVisit.exit_amount_payed || 0) + Number(currentVisit.extra_exit || 0),
+        pendiente_entrada: pendienteEntrada,
+        es_pago_al_salir: esPagoAlSalir,
       };
     });
 
@@ -652,7 +681,7 @@ export const partnerDischarge = async (
         id_payment_method,
         id_role: roles
       }),
-      id_role: roles[0],
+      id_role: getFirstRoleId(roles),
       operation_date: argentinianDate(new Date()),
       operation_amount: suggest_membership_amount,
       id_day: dayOfWeek,
@@ -688,6 +717,7 @@ export const partnerUpdate = async (
   observations?: string,
   suspension_reason?: string,
   expultion_reason?: string,
+  santion_date?: string,
   transaction?: Transaction,
 ) => {
   try {
@@ -744,7 +774,14 @@ export const partnerUpdate = async (
       observations: observations2,
       suspension_reason: suspention_reason2,
       expultion_reason: expultion_reason2,
+      santion_date: santion_date2,
     } = partner?.toJSON() as IPartner;
+
+    const newSantionDate = santion_date !== undefined && santion_date !== null && santion_date !== ''
+      ? new Date(santion_date as string)
+      : (id_state === EPartnerState.SOCIO_SUSPENDIDO || id_state === EPartnerState.SOCIO_EXPULSADO)
+        ? argentinianDate(new Date())
+        : santion_date2;
 
     //SETTERS
     
@@ -765,7 +802,7 @@ export const partnerUpdate = async (
       observations: observations ? observations : observations2,
       suspension_reason: suspension_reason ? suspension_reason : suspention_reason2,
       expultion_reason: expultion_reason ? expultion_reason : expultion_reason2,
-      santion_date: (id_state === EPartnerState.SOCIO_SUSPENDIDO || id_state === EPartnerState.SOCIO_EXPULSADO) ? argentinianDate(new Date()) : undefined,
+      santion_date: newSantionDate,
     }, {
       where: {
         id_partner
@@ -795,7 +832,7 @@ export const partnerUpdate = async (
         observations: observations ? observations : observations2,
         suspension_reason: suspension_reason ? suspension_reason : suspention_reason2,
         expultion_reason: expultion_reason ? expultion_reason : expultion_reason2,
-        santion_date: (id_state === EPartnerState.SOCIO_SUSPENDIDO || id_state === EPartnerState.SOCIO_EXPULSADO) ? argentinianDate(new Date()) : undefined,
+        santion_date: newSantionDate,
       }),
       operation_metadata: JSON.stringify({
         alias: alias ? alias : alias2,
@@ -812,12 +849,12 @@ export const partnerUpdate = async (
         observations: observations ? observations : observations2,
         suspension_reason: suspension_reason ? suspension_reason : suspention_reason2,
         expultion_reason: expultion_reason ? expultion_reason : expultion_reason2,
-        santion_date: (id_state === EPartnerState.SOCIO_SUSPENDIDO || id_state === EPartnerState.SOCIO_EXPULSADO) ? argentinianDate(new Date()) : undefined,
+        santion_date: newSantionDate,
         operation_date: argentinianDate(new Date()),
         id_role: roles,
       }),
       operation_date: argentinianDate(new Date()),
-      id_role: roles[0],
+      id_role: getFirstRoleId(roles),
       id_day: dayOfWeek,
     }, { transaction });
 
@@ -883,7 +920,7 @@ export const reactivatePartner = async (
         id_role: roles,
       }),
       operation_date: argentinianDate(new Date()),
-      id_role: roles[0],
+      id_role: getFirstRoleId(roles),
       operation_amount: reactivation_amount,
       id_day: dayOfWeek,
       id_payment_method,
@@ -1013,7 +1050,7 @@ export const partnerLiteDischarge = async (
         id_payment_method,
         id_role: roles
       }),
-      id_role: roles[0],
+      id_role: getFirstRoleId(roles),
       operation_date: argentinianDate(new Date()),
       operation_amount: suggest_membership_amount,
       id_day: dayOfWeek,
@@ -1107,6 +1144,149 @@ export const getPartnersList = async (partnerParams: IPartnerParams) => {
   }
 }
 
+// --- Esquema de pago mensual (workaround sin tocar modelo) ---
+const MENSUAL_DESCRIPTION = 'MENSUAL';
+const NO_PAGO_PREFIX = 'NO_PAGO';
+
+/** Obtiene el id_visit_type del tipo MENSUAL */
+export const getMensualVisitTypeId = async (transaction?: Transaction): Promise<number | null> => {
+  const row = await VisitType.findOne({
+    where: { description: MENSUAL_DESCRIPTION },
+    attributes: ['id_visit_type'],
+    transaction,
+  });
+  return row ? (row.get('id_visit_type') as number) : null;
+};
+
+/**
+ * Alta o renovación del esquema de pago mensual.
+ * Convención: santion_date = vto, suspension_reason = último monto, expultion_reason = acumulado (string).
+ */
+export const mensualSchemePayment = async (
+  id_partner: number,
+  santion_date: Date,
+  amount: number,
+  id_user: number,
+  roles: number[],
+  transaction?: Transaction,
+) => {
+  const idMensual = await getMensualVisitTypeId(transaction);
+  if (!idMensual) errorHandler(500, 'Tipo de visitante MENSUAL no existe en la base de datos');
+  const idMensualNum = idMensual as number;
+
+  const partner = await Partner.findByPk(id_partner, { transaction });
+  if (!partner) errorHandler(404, 'Socio no encontrado');
+  const p = partner as NonNullable<typeof partner>;
+
+  const amountStr = String(amount);
+  const json = p.toJSON() as IPartner;
+  const currentExpulsion = json.expultion_reason;
+  const currentIdVisitType = json.id_visit_type_usualy;
+
+  let newExpulsion: string;
+  if (currentIdVisitType === idMensualNum && currentExpulsion) {
+    const prev = parseFloat(currentExpulsion) || 0;
+    newExpulsion = String(prev + amount);
+  } else {
+    newExpulsion = amountStr;
+  }
+
+  await Partner.update(
+    {
+      id_visit_type_usualy: idMensualNum,
+      santion_date,
+      suspension_reason: amountStr,
+      expultion_reason: newExpulsion,
+    },
+    { where: { id_partner }, transaction },
+  );
+
+  const dayOfWeek = getVisitDate(new Date());
+  await Operation.create(
+    {
+      id_user,
+      id_partner,
+      id_operation_type: EOpertationType.MODIFICACION_SOCIO,
+      operation_log: JSON.stringify({
+        action: 'MENSUAL_SCHEME_PAYMENT',
+        id_partner,
+        santion_date,
+        amount,
+        newExpulsion,
+      }),
+      operation_metadata: JSON.stringify({
+        action: 'MENSUAL_SCHEME_PAYMENT',
+        id_partner,
+        santion_date,
+        amount,
+        operation_date: argentinianDate(new Date()),
+        id_role: roles,
+      }),
+      id_role: getFirstRoleId(roles),
+      operation_date: argentinianDate(new Date()),
+      id_day: dayOfWeek,
+    },
+    { transaction },
+  );
+
+  const updated = await Partner.findByPk(id_partner, { transaction });
+  return { partner: updated?.toJSON() };
+};
+
+/**
+ * Anotar "no paga" en el esquema mensual: concatena en observations " | NO_PAGO [YYYY-MM-DD]".
+ */
+export const partnerAnotarNoPago = async (
+  id_partner: number,
+  id_user: number,
+  roles: number[],
+  transaction?: Transaction,
+) => {
+  const partner = await Partner.findByPk(id_partner, { transaction });
+  if (!partner) errorHandler(404, 'Socio no encontrado');
+  const p = partner as NonNullable<typeof partner>;
+
+  const json = p.toJSON() as IPartner;
+  const observations = json.observations || '';
+  const today = argentinianDate(new Date());
+  const dateStr = today.toISOString().slice(0, 10);
+  const newObservation = observations.trim()
+    ? `${observations} | ${NO_PAGO_PREFIX} [${dateStr}]`
+    : `${NO_PAGO_PREFIX} [${dateStr}]`;
+
+  await Partner.update(
+    { observations: newObservation },
+    { where: { id_partner }, transaction },
+  );
+
+  const dayOfWeek = getVisitDate(new Date());
+  await Operation.create(
+    {
+      id_user,
+      id_partner,
+      id_operation_type: EOpertationType.MODIFICACION_SOCIO,
+      operation_log: JSON.stringify({
+        action: 'MENSUAL_ANOTAR_NO_PAGO',
+        id_partner,
+        date: dateStr,
+      }),
+      operation_metadata: JSON.stringify({
+        action: 'MENSUAL_ANOTAR_NO_PAGO',
+        id_partner,
+        operation_date: argentinianDate(new Date()),
+        id_role: roles,
+      }),
+      id_role: getFirstRoleId(roles),
+      operation_date: argentinianDate(new Date()),
+      id_day: dayOfWeek,
+    },
+    { transaction },
+  );
+
+  const updated = await Partner.findByPk(id_partner, { transaction });
+  return { partner: updated?.toJSON() };
+};
+
 // Helper para obtener visitas históricas por fecha
 export const getHistoricalVisits = async (
   partnerParams: IPartnerParams,
@@ -1197,7 +1377,7 @@ export const getHistoricalVisits = async (
         visit_amount_consumed: Number(currentVisit.visit_amount_consumed || 0),
         exit_amount_payed: Number(currentVisit.exit_amount_payed || 0),
         extra_exit: Number(currentVisit.extra_exit || 0),
-        total_payed: Number(currentVisit.entry_amount_paid || 0) + Number(currentVisit.extra_entry || 0) + Number(currentVisit.visit_amount_consumed || 0) + Number(currentVisit.exit_amount_payed || 0) + Number(currentVisit.extra_exit || 0)
+        total_payed: Number(currentVisit.entry_amount_paid || 0) + Number(currentVisit.extra_entry || 0) + Number(currentVisit.exit_amount_payed || 0) + Number(currentVisit.extra_exit || 0)
       };
     });
 

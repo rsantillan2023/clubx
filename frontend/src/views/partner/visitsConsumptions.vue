@@ -108,6 +108,17 @@
                             <v-icon left>mdi-file-excel</v-icon>
                             Exportar XLS
                         </v-btn>
+                        <v-btn
+                            color="red"
+                            dark
+                            rounded
+                            @click="exportToPdf"
+                            :loading="loadPdf"
+                            elevation="2"
+                        >
+                            <v-icon left>mdi-file-pdf-box</v-icon>
+                            Exportar PDF consumos
+                        </v-btn>
                     </v-col>
                 </v-row>
             </v-card-text>
@@ -288,12 +299,15 @@
 
 <script>
 import exportFromJSON from 'export-from-json';
+import { jsPDF } from 'jspdf';
+import { autoTable } from 'jspdf-autotable';
 
 export default {
     name: 'VisitsConsumptions',
     data: () => ({
         load: false,
         loadExcel: false,
+        loadPdf: false,
         items: [],
         searchText: '',
         braceletNumber: '',
@@ -483,6 +497,12 @@ export default {
             const consumos = Number(item.visit_amount_consumed || 0);
             const exit = Number(item.exit_amount_payed || 0);
             const extraExit = Number(item.extra_exit || 0);
+            // Si ya tiene salida, lo pagado en salida (exit_amount_payed) ya incluye los consumos.
+            // No sumar consumos por separado para no duplicar.
+            if (item.hour_exit) {
+                return entry + extraEntry + exit + extraExit;
+            }
+            // En club: entrada + extras entrada + consumos (aún no pagó salida)
             return entry + extraEntry + consumos + exit + extraExit;
         },
         getVisitTypeColor(id) {
@@ -565,6 +585,173 @@ export default {
                 this.$toast?.error('Error al exportar el archivo');
             } finally {
                 this.loadExcel = false;
+            }
+        },
+        async exportToPdf() {
+            const dateToUse = this.savedSelectedDate || this.selectedDate;
+            if (!dateToUse) {
+                this.$toast?.error('Por favor seleccione una fecha');
+                return;
+            }
+
+            this.loadPdf = true;
+
+            try {
+                // Traer todas las visitas de la fecha (sin paginación) para tener la lista completa
+                const response = await this.$http.get(
+                    process.env.VUE_APP_DEGIRA + 'partners/visits-consumptions',
+                    {
+                        params: {
+                            page: 1,
+                            pageSize: 5000,
+                            sortBy: 'hour_entry',
+                            sortDesc: true,
+                            date: dateToUse,
+                        },
+                    }
+                );
+
+                const allVisits = response.data?.data || [];
+                const withConsumos = allVisits.filter(
+                    (v) => Number(v.visit_amount_consumed || 0) > 0
+                );
+
+                if (withConsumos.length === 0) {
+                    this.$toast?.warning('No hay socios con consumos mayores a 0 para esta fecha');
+                    this.loadPdf = false;
+                    return;
+                }
+
+                // Ordenar por monto consumido descendente
+                withConsumos.sort((a, b) => {
+                    const ta = Number(a.visit_amount_consumed || 0);
+                    const tb = Number(b.visit_amount_consumed || 0);
+                    return tb - ta;
+                });
+
+                // Obtener detalle de consumos por cada socio (en paralelo, lotes de 5)
+                const CONCURRENCY = 5;
+                const partnersWithDetail = [];
+
+                for (let i = 0; i < withConsumos.length; i += CONCURRENCY) {
+                    const chunk = withConsumos.slice(i, i + CONCURRENCY);
+                    const results = await Promise.all(
+                        chunk.map(async (visit) => {
+                            try {
+                                const r = await this.$http.get(
+                                    process.env.VUE_APP_DEGIRA + 'consumptions/get/consume',
+                                    { params: { id_bracelet: visit.id_bracelet_1 || visit.id_bracelet_2 } }
+                                );
+                                const products = (r.data?.data?.products || []).filter(
+                                    (p) => p.quantity > 0 && p.payed != null
+                                );
+                                return { visit, products };
+                            } catch (e) {
+                                return { visit, products: [] };
+                            }
+                        })
+                    );
+                    partnersWithDetail.push(...results);
+                }
+
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                const pageW = doc.internal.pageSize.getWidth();
+                const margin = 14;
+                let y = 20;
+
+                const formatAlias = (alias) => (alias ? String(alias).replace(/---/g, ' ') : '');
+
+                // Título
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.text('Listado de consumos por socio', margin, y);
+                y += 10;
+
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                const fechaVisita = this.$moment(dateToUse).format('DD/MM/YYYY');
+                const generado = this.$moment().format('DD/MM/YYYY HH:mm');
+                doc.text(`Fecha de visita: ${fechaVisita}  |  Generado: ${generado}`, margin, y);
+                y += 12;
+
+                for (let idx = 0; idx < partnersWithDetail.length; idx++) {
+                    const { visit, products } = partnersWithDetail[idx];
+                    const partner = visit.partner || {};
+                    const alias = formatAlias(partner.alias || visit.alias);
+                    const nombre = partner.partner_name || 'N/A';
+                    const tarjeta = visit.id_bracelet_1 || visit.id_bracelet_2 || 'N/A';
+                    const tipoVisita = visit.visit_type?.description || 'N/A';
+                    const totalConsumo = Number(visit.visit_amount_consumed || 0);
+                    const totalFormatted = totalConsumo.toLocaleString('es-AR', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                    });
+
+                    // Si no hay espacio para bloque + tabla, nueva página
+                    if (y > 240) {
+                        doc.addPage();
+                        y = 20;
+                    }
+
+                    // Bloque socio
+                    doc.setFontSize(11);
+                    doc.setFont(undefined, 'bold');
+                    doc.setDrawColor(230, 120, 0);
+                    doc.setLineWidth(0.3);
+                    doc.rect(margin, y - 5, pageW - 2 * margin, 22, 'S');
+                    doc.text(`Socio: ${alias} - ${nombre}`, margin + 3, y + 4);
+                    doc.setFont(undefined, 'normal');
+                    doc.setFontSize(9);
+                    doc.text(`Tarjeta: ${tarjeta}  |  Tipo: ${tipoVisita}  |  Total: $${totalFormatted}`, margin + 3, y + 11);
+                    y += 26;
+
+                    // Tabla de consumos
+                    const head = [['#', 'Descripción', 'Hora', 'P.Unit', 'Cant', 'Monto']];
+                    const body = products.map((p, i) => {
+                        const hora = p.ticket_date
+                            ? this.$moment(p.ticket_date).format('HH:mm')
+                            : '';
+                        const monto = (parseFloat(p.price || 0) * parseInt(p.quantity || 0, 10)).toFixed(0);
+                        return [
+                            String(i + 1),
+                            (p.description || '').substring(0, 35),
+                            hora,
+                            String(parseFloat(p.price || 0).toFixed(0)),
+                            String(p.quantity || 0),
+                            `$${monto}`,
+                        ];
+                    });
+
+                    autoTable(doc, {
+                        startY: y,
+                        head,
+                        body,
+                        margin: { left: margin, right: margin },
+                        theme: 'grid',
+                        headStyles: { fillColor: [230, 120, 0], fontSize: 8 },
+                        bodyStyles: { fontSize: 8 },
+                        columnStyles: {
+                            0: { cellWidth: 8 },
+                            1: { cellWidth: 55 },
+                            2: { cellWidth: 18 },
+                            3: { cellWidth: 22 },
+                            4: { cellWidth: 15 },
+                            5: { cellWidth: 25 },
+                        },
+                    });
+
+                    y = doc.lastAutoTable.finalY + 10;
+                }
+
+                doc.save(`consumos_socios_${dateToUse}_${this.$moment().format('HHmm')}.pdf`);
+                this.$toast?.success('PDF generado correctamente');
+            } catch (error) {
+                console.error('Error al generar PDF:', error);
+                this.$toast?.error(
+                    error.response?.data?.message || error.message || 'Error al generar el PDF'
+                );
+            } finally {
+                this.loadPdf = false;
             }
         },
     },

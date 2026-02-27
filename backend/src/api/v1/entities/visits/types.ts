@@ -3,6 +3,9 @@ import { IVisit } from "../../../../database/schemas/degira/interfaces/visit.int
 import TicketDetails from "../../../../database/schemas/degira/models/ticket_details.model";
 import { IRequestParams } from "../../types/requestParam.interface";
 
+/** Token en entry_visit_obs para marcar "entrada a pagar a la salida" (Opción B) */
+export const PAGAR_AL_SALIR = "PAGAR_AL_SALIR";
+
 //INTERFACES
 export interface IVisitRegister{
     //id_visit: number;

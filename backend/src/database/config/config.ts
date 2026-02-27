@@ -5,11 +5,12 @@ const username = process.env.DB_USERNAME || '';
 const password = process.env.DB_PASSWORD || '';
 const host = process.env.DB_HOST || '';
 const dialect = process.env.DB_DIALECT || '';
+const port = process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306;
 
 // Usar diferentes bases de datos según el entorno
 const database = process.env.DB_DATABASE || '';
 const databaseDev = process.env.DB_DATABASE_DEV || 'miclub_db_dev';
-const databaseProd = process.env.DB_DATABASE_PROD || 'miclub_db';
+const databaseProd = process.env.DB_DATABASE_PROD || process.env.DB_DATABASE || 'miclub_db';
 
 const config: IEnviromentConfig | any = {
   development: {
@@ -17,6 +18,7 @@ const config: IEnviromentConfig | any = {
     password,
     database: databaseDev, // Base de datos de desarrollo
     host,
+    port,
     dialect,
     pool: {
       max: 5,
@@ -41,6 +43,7 @@ const config: IEnviromentConfig | any = {
     password,
     database,
     host,
+    port,
     dialect,
     timezone: '+00:00',
     define: {
@@ -59,6 +62,7 @@ const config: IEnviromentConfig | any = {
     password,
     database: databaseProd, // Base de datos de producción
     host,
+    port,
     dialect,
     timezone: '+00:00',
     define: {

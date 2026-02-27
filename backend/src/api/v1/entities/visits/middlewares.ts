@@ -9,6 +9,7 @@ import { DEGIRA_DB } from '../../../../database/connection';
 import PaymentMethod from "../../../../database/schemas/degira/models/payment_method.model.interface";
 import { EPartnerState } from "../partners/types";
 import { EPaymentMethod } from "../payment_method/types";
+import { PAGAR_AL_SALIR } from "./types";
 
 
 export const entryValidator = async (
@@ -16,8 +17,7 @@ export const entryValidator = async (
     //visit_date: string,
     id_state: number,
     id_visit_type: number,
-    //other_visit_obs: string,
-    //entry_visit_obs: string,
+    entry_visit_obs: string,
     entry_amount_paid: number,
     other_paid: number,
     other_paid_obs: string,
@@ -89,8 +89,11 @@ export const entryValidator = async (
                 } */
 
         if (id_payment_method !== EPaymentMethod.NO_PAGA && ((!entry_amount_paid || isNaN(Number(entry_amount_paid))) && id_state !== EPartnerState.SOCIO_INVITADO)) {
-            isValid = false;
-            message += "- la cantidad pagada es requerida y debe ser un numero";
+            const esPagarAlSalir = (entry_visit_obs || "").includes(PAGAR_AL_SALIR);
+            if (!esPagarAlSalir) {
+                isValid = false;
+                message += "- la cantidad pagada es requerida y debe ser un numero";
+            }
         }
 
         //OTHER PAID

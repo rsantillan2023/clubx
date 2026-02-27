@@ -61,19 +61,25 @@
             getImageUrl(url) {
                 if (!url) return null;
                 
-                // Si ya es una URL completa (http:// o https://), usarla tal cual
                 if (url.startsWith('http://') || url.startsWith('https://')) {
                     return url;
                 }
                 
-                // Si es una ruta relativa que empieza con /uploads/, construir la URL completa
-                // Limpiar cualquier /v1/ que pueda estar en la ruta
-                let cleanPath = url.replace(/^\/v1\//, '/');
-                if (cleanPath.startsWith('/uploads/')) {
-                    return `http://localhost:3000${cleanPath}`;
+                // Origen = mismo que el API (VUE_APP_DEGIRA)
+                let apiOrigin = 'http://localhost:3000';
+                try {
+                    if (process.env.VUE_APP_DEGIRA) apiOrigin = new URL(process.env.VUE_APP_DEGIRA).origin;
+                } catch (_e) {
+                    // mantener apiOrigin por defecto si falla el parse de la URL
                 }
                 
-                // Si no empieza con /uploads/, retornar la URL original
+                let cleanPath = url.replace(/^\/v1\//, '/');
+                if (cleanPath.startsWith('/uploads/')) {
+                    return `${apiOrigin}${cleanPath}`;
+                }
+                if (cleanPath && !cleanPath.includes('/')) {
+                    return `${apiOrigin}/uploads/products-services/${cleanPath}`;
+                }
                 return url;
             }
         }

@@ -252,19 +252,15 @@ export default {
     },
   },
   methods: {
-    // Helper para construir URLs de CRUD
+    // Helper para construir URLs de CRUD (el backend monta las rutas en /api/v1/degira/crud/...)
     buildCrudUrl(endpoint) {
       const baseUrl = process.env.VUE_APP_DEGIRA || '';
       if (baseUrl) {
-        // Remover /degira/ si existe (compatibilidad con configuraciones antiguas)
-        let cleanUrl = baseUrl.replace(/\/degira\//, '/').replace(/degira$/, '');
-        // Asegurar que termine con /
-        if (!cleanUrl.endsWith('/')) {
-          cleanUrl += '/';
+        let url = baseUrl.trim();
+        if (!url.endsWith('/')) {
+          url += '/';
         }
-        // Agregar /crud/ después de /v1/
-        cleanUrl = cleanUrl.replace(/\/v1\/$/, '/v1/crud/');
-        return cleanUrl + endpoint;
+        return url + 'crud/' + endpoint;
       } else {
         return `/v1/crud/${endpoint}`;
       }

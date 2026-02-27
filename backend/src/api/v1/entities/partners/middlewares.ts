@@ -290,7 +290,7 @@ export const putPartnerValidator = async (
     }
 
     //AFFILIATE_DNI
-    if (Number(affiliate_dni) === Number(partner_dni)) {
+    if (affiliate_dni && partner_dni && String(affiliate_dni).trim() && String(partner_dni).trim() && Number(affiliate_dni) === Number(partner_dni)) {
       isValid = false;
       message += '- El DNI del afiliado no puede ser igual al del socio';
     }

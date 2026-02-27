@@ -41,6 +41,8 @@ coverage/
 # Opcional: backups (descomenta si no quieres subirlos)
 # frontend_backup_1/
 # backend_backup_1/
+backend/backups/
+backend/uploads/
 
 # Lock files (opcional: algunos equipos los incluyen)
 # package-lock.json

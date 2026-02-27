@@ -12,7 +12,7 @@
           outlined
           dense
           clearable
-          @change="loadPrices"
+          @change="onFilterChange"
         ></v-select>
       </v-col>
       <v-col cols="12" md="3">
@@ -25,7 +25,7 @@
           outlined
           dense
           clearable
-          @change="loadPrices"
+          @change="onFilterChange"
         ></v-select>
       </v-col>
       <v-col cols="12" md="3">
@@ -38,7 +38,7 @@
           outlined
           dense
           clearable
-          @change="loadPrices"
+          @change="onFilterChange"
         ></v-select>
       </v-col>
       <v-col cols="12" md="3" class="d-flex align-center">
@@ -306,6 +306,7 @@ export default {
       selectedItems: [],
       loading: false,
       totalCount: 0,
+      filterJustChanged: false,
       options: {
         page: 1,
         itemsPerPage: 10,
@@ -351,6 +352,10 @@ export default {
   watch: {
     options: {
       handler() {
+        if (this.filterJustChanged) {
+          this.filterJustChanged = false;
+          return;
+        }
         this.loadPrices();
       },
       deep: true,
@@ -376,7 +381,7 @@ export default {
           };
           this.days = daysData.map(day => ({
             id_day: Number(day.id_day),
-            description: dayNames[day.id_day] || day.description || `Día ${day.id_day}`,
+            description: dayNames[day.id_day] || day.description || day.name || `Día ${day.id_day}`,
           }));
           console.log('Días cargados:', this.days);
         }
@@ -413,6 +418,11 @@ export default {
         console.error('Error al cargar conceptos de cobro:', error);
       }
     },
+    onFilterChange() {
+      this.filterJustChanged = true;
+      this.options.page = 1;
+      this.loadPrices();
+    },
     async loadPrices() {
       this.loading = true;
       try {
@@ -423,14 +433,17 @@ export default {
           sortDesc: this.options.sortDesc.length > 0 ? this.options.sortDesc[0] : undefined,
         };
 
-        if (this.filters.id_day) {
-          params.id_day = this.filters.id_day;
+        if (this.filters.id_day != null && this.filters.id_day !== '') {
+          const n = Number(this.filters.id_day);
+          if (!isNaN(n)) params.id_day = n;
         }
-        if (this.filters.id_visit_type) {
-          params.id_visit_type = this.filters.id_visit_type;
+        if (this.filters.id_visit_type != null && this.filters.id_visit_type !== '') {
+          const n = Number(this.filters.id_visit_type);
+          if (!isNaN(n)) params.id_visit_type = n;
         }
-        if (this.filters.id_receivable_concept) {
-          params.id_receivable_concept = this.filters.id_receivable_concept;
+        if (this.filters.id_receivable_concept != null && this.filters.id_receivable_concept !== '') {
+          const n = Number(this.filters.id_receivable_concept);
+          if (!isNaN(n)) params.id_receivable_concept = n;
         }
 
         const queryString = Object.keys(params)
@@ -656,7 +669,12 @@ export default {
         }
       } catch (error) {
         console.error('Error al actualizar precio:', error);
-        const errorMessage = error.response?.data?.message || 'Error al actualizar el precio';
+        const data = error.response && error.response.data;
+        let errorMessage = (data && data.message) || 'Error al actualizar el precio';
+        if (errorMessage.includes('rolled back') || errorMessage.includes('rollback')) {
+          errorMessage = 'Error al actualizar el precio. Reinicie el backend (npm run build y luego npm run start en la carpeta backend) y vuelva a intentar.';
+        }
+        if (data) console.log('[PricesManagement] Respuesta de error del backend:', data);
         this.showSnackbar(errorMessage, 'error');
       } finally {
         this.savingPrice = false;

@@ -28,6 +28,21 @@ const rolIncludeable: Includeable = {
 
 // ==================== AUTENTICACIÓN ====================
 
+/** Indica si el valor guardado parece un hash bcrypt (sistema nuevo). */
+const isBcryptHash = (stored: string): boolean =>
+  typeof stored === 'string' && (stored.startsWith('$2a$') || stored.startsWith('$2b$') || stored.startsWith('$2y$'));
+
+/**
+ * Valida la contraseña: acepta bcrypt (nuevo) o texto plano (legacy).
+ * No se escribe en la BD: si está en plano sigue en plano, así sirve para ambos sistemas.
+ */
+const validatePassword = (pass: string, storedPassword: string): boolean => {
+  if (isBcryptHash(storedPassword)) {
+    return bcrypt.compareSync(pass, storedPassword);
+  }
+  return pass === storedPassword;
+};
+
 export const userLogin = async (
   username: string,
   pass: string,
@@ -48,8 +63,7 @@ export const userLogin = async (
       roles,
     } = (user?.toJSON() as IUserAPI) || {};
 
-    // Validar contraseña con bcrypt (compatible con producción)
-    const validatePass = bcrypt.compareSync(pass, password);
+    const validatePass = validatePassword(pass, password);
     if (!validatePass) errorHandler(403, 'Contraseña incorrecta');
 
     const token = jwt.sign({ id_user, roles }, AUTH_KEY, {});

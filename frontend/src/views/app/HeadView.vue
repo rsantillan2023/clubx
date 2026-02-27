@@ -59,6 +59,7 @@ export default{
         this.$router.go(-1)
       },
       redirectToHome() {
+        if (this.$route.path === '/home') return;
         this.$router.push({ path: '/home' });
       },
       logout(){

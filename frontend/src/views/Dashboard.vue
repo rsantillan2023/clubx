@@ -119,7 +119,7 @@ export default {
           //seteo las rutas heredadas para dejar acceder
           if(routes.includes('/access')) routes = routes.concat(['/entryRegister', '/entryRegisterLite', '/activeVisits', '/membershipReactivation', '/registerPartner','/registerPartnerLite'])
           if(routes.includes('/accessMembership')) routes = routes.concat(['/entryRegister', '/entryRegisterLite', '/activeVisits', '/membershipReactivation', '/registerPartner','/registerPartnerLite'])
-          if(routes.includes('/activeVisits')) routes = routes.concat(['/consumed'])
+          if(routes.includes('/activeVisits')) routes = routes.concat(['/consumed', '/quienes-pagan-a-la-salida'])
           if(routes.includes('/consumed')) routes = routes.concat(['/exitRegister'])
 
           //limpio duplicados

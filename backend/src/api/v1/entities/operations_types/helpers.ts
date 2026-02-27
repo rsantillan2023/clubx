@@ -26,19 +26,11 @@ export const validateOperationTypeExists = async (id_operation_type: number): Pr
 };
 
 export const validatePathUnique = async (
-    path: string,
-    excludeId?: number,
+    _path: string,
+    _excludeId?: number,
 ): Promise<void> => {
-    if (!path) return;
-    
-    const where: WhereOptions = { path };
-    if (excludeId) {
-        where.id_operation_type = { [Op.ne]: excludeId };
-    }
-    const existing = await OperationType.findOne({ where });
-    if (existing) {
-        errorHandler(400, 'Ya existe una operación con esta ruta');
-    }
+    // Deshabilitado: permitimos mismo path en varios ítems (uno por rol).
+    return;
 };
 
 export const validateRoleExists = async (id_role: number): Promise<void> => {
@@ -182,9 +174,8 @@ export const createOperationType = async (
 
         // Validaciones
         await validateRoleExists(id_role);
-        if (path) {
-            await validatePathUnique(path);
-        }
+        // Path puede repetirse: mismo path para distintos roles (ej. CAJA y ADMIN)
+        // if (path) { await validatePathUnique(path); }
 
         // Crear operation type
         const operationType = await OperationType.create({
@@ -227,7 +218,8 @@ export const updateOperationType = async (
         if (tag !== undefined) updateData.tag = tag;
         if (icon !== undefined) updateData.icon = icon;
         if (path !== undefined) {
-            await validatePathUnique(path, id_operation_type);
+            // Path puede repetirse: mismo path para distintos roles
+            // await validatePathUnique(path, id_operation_type);
             updateData.path = path;
         }
         if (menu_available !== undefined) updateData.menu_available = menu_available;

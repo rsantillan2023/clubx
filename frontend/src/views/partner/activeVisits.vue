@@ -232,6 +232,21 @@
                                     <span v-if="!$vuetify.breakpoint.xs">Vender Productos</span>
                                     <span v-else>Vender</span>
                                 </v-btn>
+                                <v-btn
+                                    color="orange"
+                                    dark
+                                    rounded
+                                    outlined
+                                    @click="$router.push('/quienes-pagan-a-la-salida')"
+                                    class="mr-2"
+                                    elevation="2"
+                                    :small="$vuetify.breakpoint.smAndDown"
+                                    :x-small="$vuetify.breakpoint.xs"
+                                >
+                                    <v-icon :left="!$vuetify.breakpoint.xs">mdi-cash-clock</v-icon>
+                                    <span v-if="!$vuetify.breakpoint.xs">Quiénes pagan a la salida</span>
+                                    <span v-else>Pagan a la salida</span>
+                                </v-btn>
                             </v-col>
                         </v-row>
                     </v-card>

@@ -11,7 +11,8 @@
                         mandatory
                         @change="getPrice"
                         color="orange"
-                        class="flex-wrap">
+                        class="flex-wrap"
+                        :disabled="isMensualLocked">
                         <v-btn 
                             v-for="visit in visits" 
                             :key="visit.id_visit_type"
@@ -62,6 +63,26 @@
                 </v-col>
 
                 <v-row no-gutters v-if="selectPayMethod != 5">
+                    <v-col cols="12" class="px-1 mb-2">
+                        <v-checkbox
+                            v-model="pagaEstacionamiento"
+                            label="Paga estacionamiento"
+                            color="orange"
+                            hide-details
+                            dense
+                            @change="onPagaEstacionamientoChange"
+                        />
+                    </v-col>
+                    <v-col cols="12" class="px-1 mb-2" v-if="partner && partner.id_state != 8">
+                        <v-checkbox
+                            v-model="pagarALaSalida"
+                            label="Pagar entrada a la salida"
+                            color="orange"
+                            hide-details
+                            dense
+                            @change="onPagarALaSalidaChange"
+                        />
+                    </v-col>
                     <v-col cols="12" :md="(items.other_paid) ? 6 : 12" class="px-1">
                         <v-text-field
                             label="Registre aca si se cobro algun monto adicional"
@@ -89,7 +110,7 @@
             <v-col cols="12" class="mt-2" v-if="(this.$store.state.userLoged.clienteId != 2)">
                 <v-row class="justify-center align-center pb-3 px-16">
                     <v-col cols="12" md="4" class="text-center py-0 pb-2">
-                        <v-card v-if="(items.entry_amount_paid)" 
+                        <v-card v-if="(items.entry_amount_paid != null && items.entry_amount_paid !== '') && !pagarALaSalida" 
                         :style="`border: solid 3px ${(difference == 0) ? $vuetify.theme.defaults.light.teal : $vuetify.theme.defaults.light.orange}`" 
                         outlined 
                         elevation="0" 
@@ -103,11 +124,11 @@
                         </v-card>
                     </v-col>
 
-                    <v-col cols="12" md="2" class="text-center py-0 pb-2" v-if="items.entry_amount_paid">
+                    <v-col cols="12" md="2" class="text-center py-0 pb-2" v-if="items.entry_amount_paid && !pagarALaSalida">
                         <v-icon size="50" color="orange">{{ ($vuetify.breakpoint.mdAndUp) ? "mdi-arrow-right-thick" : "mdi-arrow-down-thick"}}</v-icon>
                     </v-col>
 
-                    <v-col cols="12" md="4" class="text-center py-0 pb-2">
+                    <v-col cols="12" md="4" class="text-center py-0 pb-2" v-if="!pagarALaSalida">
                         <v-card outlined elevation="0" class="pb-0">
                             <v-card elevation="0" color="orange" dark class="rounded-b-0">
                                 <v-card-subtitle class="font-weight-thin" style="font-size: 1rem">Ingrese monto real abonado</v-card-subtitle>
@@ -118,11 +139,16 @@
                                     outlined
                                     dense
                                     type="number"
-                                    :rules='[(v) => !!v || "El monto es requerido"]'
+                                    :rules='pagarALaSalida ? [] : [(v) => !!v || "El monto es requerido"]'
                                     >
                                 </v-text-field>
                             </div>
                         </v-card>
+                    </v-col>
+                    <v-col cols="12" md="6" class="text-center py-0 pb-2" v-if="pagarALaSalida">
+                        <v-alert type="warning" dense outlined>
+                            El socio abonará la entrada ($ {{ total }}) al registrar la salida.
+                        </v-alert>
                     </v-col>
                 </v-row>
                
@@ -190,6 +216,9 @@ import eventBus from '../../event-bus'
                 loading: false,
                 selectVisit: null,
                 selectPayMethod: 1,
+                pagaEstacionamiento: false,
+                pagarALaSalida: false,
+                isMensualLocked: false,
                 other_visit_obs: "",
                 partner: null,
                 errorMessage: false,
@@ -230,6 +259,10 @@ import eventBus from '../../event-bus'
                 if(this.selectPayMethod == 5){
                     this.items.other_paid = null
                     this.items.other_paid_obs = ""
+                    this.pagaEstacionamiento = false
+                    this.pagarALaSalida = false
+                } else if (this.pagaEstacionamiento) {
+                    this.getPriceEstacionamiento()
                 }
             },
             'items.other_paid'(val){
@@ -303,6 +336,37 @@ import eventBus from '../../event-bus'
                             }
                         })
                     }
+                if (this.pagaEstacionamiento) this.getPriceEstacionamiento()
+            },
+            getPriceEstacionamiento() {
+                if (!this.selectVisit || !this.selectPayMethod || this.partner.id_state == 8) return
+                const vm = this
+                this.$http.get(process.env.VUE_APP_DEGIRA+"price/get?id_visit_type="+this.selectVisit+"&id_payment_method="+this.selectPayMethod+"&id_receivable_concept=3")
+                    .then((response) => {
+                        if (response && response.data && response.data.data) {
+                            vm.items.other_paid = response.data.data.totalWithPercentage
+                            vm.items.other_paid_obs = "ESTACIONAMIENTO"
+                        }
+                    })
+                    .catch(() => {
+                        vm.items.other_paid = null
+                        vm.items.other_paid_obs = ""
+                    })
+            },
+            onPagaEstacionamientoChange(checked) {
+                if (checked) {
+                    this.getPriceEstacionamiento()
+                } else {
+                    if (this.items.other_paid_obs === "ESTACIONAMIENTO") {
+                        this.items.other_paid = null
+                        this.items.other_paid_obs = ""
+                    }
+                }
+            },
+            onPagarALaSalidaChange(checked) {
+                if (checked) {
+                    this.items.entry_amount_paid = 0
+                }
             },
             getPaymentMethod(){
                 let vm = this
@@ -325,8 +389,18 @@ import eventBus from '../../event-bus'
                 this.$http.get(process.env.VUE_APP_DEGIRA+"visits_types/get")
                 .then((response)=>{
                     if(response){
-                        vm.visits = response.data.data
-                        vm.selectVisit = vm.partner.id_visit_type_usualy
+                        const all = response.data.data || []
+                        const mensualType = all.find((v) => (v.description || '').toUpperCase() === 'MENSUAL')
+                        const idMensual = mensualType ? mensualType.id_visit_type : null
+                        if (idMensual != null && vm.partner && vm.partner.id_visit_type_usualy === idMensual) {
+                            vm.visits = [mensualType]
+                            vm.selectVisit = idMensual
+                            vm.isMensualLocked = true
+                        } else {
+                            vm.visits = all.filter((v) => (v.description || '').toUpperCase() !== 'MENSUAL')
+                            vm.selectVisit = vm.partner.id_visit_type_usualy
+                            vm.isMensualLocked = false
+                        }
                         vm.getPrice()
                     }
                 })
@@ -449,10 +523,49 @@ import eventBus from '../../event-bus'
                     eventBus.$emit('toast', { show: true, text: 'Debe seleccionar un metodo de pago', color: "red" })
                     return
                 }
-                if(this.$refs.form.validate()){
-                    // Mostrar diálogo de confirmación antes de proceder
-                    this.showConfirmationDialog()
+                if (this.pagarALaSalida) {
+                    this.items.entry_amount_paid = 0
                 }
+                if(this.$refs.form.validate()){
+                    if (this.pagarALaSalida) {
+                        this.showPagarALaSalidaConfirmDialog()
+                    } else {
+                        this.showConfirmationDialog()
+                    }
+                }
+            },
+            showPagarALaSalidaConfirmDialog() {
+                const monto = this.total > 0 ? this.total : 0
+                const dialog = {
+                    show: true,
+                    title: "Confirmar: pagar entrada a la salida",
+                    type: 'warning',
+                    isHtml: false,
+                    closeDialog: true,
+                    text: `El socio no abonará la entrada ahora. El monto de $${monto} quedará pendiente y deberá pagarse al registrar la salida. ¿Confirmar registro de entrada?`,
+                    goTo: [
+                        {
+                            title: 'Sí, registrar entrada',
+                            icon: "mdi-check-circle",
+                            route: null,
+                            action: () => {
+                                const closeDialog = { show: false, title: "", text: "", type: 'success' }
+                                eventBus.$emit('ConfirmDialog', closeDialog)
+                                this.proceedWithRegistration()
+                            }
+                        },
+                        {
+                            title: 'Cancelar',
+                            icon: "mdi-close-circle",
+                            route: null,
+                            action: () => {
+                                const closeDialog = { show: false, title: "", text: "", type: 'success' }
+                                eventBus.$emit('ConfirmDialog', closeDialog)
+                            }
+                        }
+                    ]
+                }
+                eventBus.$emit('ConfirmDialog', dialog)
             },
             proceedWithRegistration() {
                 // Cerrar el diálogo de confirmación
@@ -469,18 +582,29 @@ import eventBus from '../../event-bus'
                     entry_amount_paid = 0
                     other_paid = 0
                 }
+                if (this.pagarALaSalida) {
+                    entry_amount_paid = 0
+                    other_paid = 0
+                }
+                const entry_visit_obs = this.pagarALaSalida
+                    ? (this.items.entry_visit_obs ? 'PAGAR_AL_SALIR — ' + this.items.entry_visit_obs : 'PAGAR_AL_SALIR')
+                    : this.items.entry_visit_obs
+                // had_to_paid: total que debe abonar (entrada + extras con recargo). Si "pagar a la salida", ese total queda pendiente.
+                const had_to_paid_val = this.pagarALaSalida
+                    ? (this.items.other_paid ? this.price + parseFloat(this.items.other_paid) * (parseFloat(pay_method_percent) + 1) : this.price)
+                    : ((this.items.other_paid) ? this.price + parseFloat(this.items.other_paid) * (parseFloat(pay_method_percent) + 1) : this.price)
                 let data = {
                     "id_partner": this.partner.id_partner,
                     "id_state": this.partner.id_state,
                     "id_visit_type": this.selectVisit,
                     "other_visit_obs" : this.items.other_visit_obs,
-                    "entry_visit_obs" : this.items.entry_visit_obs,
-                    "other_paid_obs": (other_paid) ? this.items.other_paid_obs : "",
+                    "entry_visit_obs" : entry_visit_obs,
+                    "other_paid_obs": (other_paid && !this.pagarALaSalida) ? this.items.other_paid_obs : "",
                     "entry_amount_paid" : entry_amount_paid,
                     "id_bracelet_1": '',
                     "id_bracelet_2": '', 
                     "id_payment_method": this.selectPayMethod, 
-                    "had_to_paid": (this.items.other_paid) ? this.price + parseFloat(this.items.other_paid) * (parseFloat(pay_method_percent) + 1): this.price,
+                    "had_to_paid": had_to_paid_val,
                     "other_paid": other_paid,   
                 }
                 this.$http.post(process.env.VUE_APP_VISITS+'fast-entry', data)

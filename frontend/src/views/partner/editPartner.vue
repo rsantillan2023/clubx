@@ -1,5 +1,5 @@
 <template>
-<div class="py-8">
+<div class="edit-partner-page">
     <v-form ref="form" class="px-md-15 px-5">
         <v-row no-gutters>
             <v-col cols="12" md="6" class="px-1">
@@ -12,6 +12,12 @@
                         dense
                         outlined
                         >
+                    <template v-slot:selection="{ item }">
+                        <span v-if="item" :class="`${stateColorName(item.id_state)}--text font-weight-bold select-text-4pt-larger`">{{ item.description }}</span>
+                    </template>
+                    <template v-slot:item="{ item }">
+                        <span :class="`${stateColorName(item.id_state)}--text select-text-4pt-larger`">{{ item.description }}</span>
+                    </template>
                 </v-select> 
             </v-col>
 
@@ -20,43 +26,45 @@
                     v-model="selectVisit"
                     :items="visits"
                     label="Tipo de Visitante"
-                    
                     dense
                     outlined
                     disabled
                     item-text="description"
                     item-value="id_visit_type">
+                    <template v-slot:selection="{ item }">
+                        <span v-if="item" :class="`${visitTypeColorName(item.id_visit_type)}--text font-weight-bold select-text-4pt-larger`">{{ item.description }}</span>
+                    </template>
+                    <template v-slot:item="{ item }">
+                        <span :class="`${visitTypeColorName(item.id_visit_type)}--text select-text-4pt-larger`">{{ item.description }}</span>
+                    </template>
                 </v-select>  
             </v-col>
         </v-row>
            
-        <v-row class="justify-center align-center pb-2">
-            <v-col cols="12" class="text-center py-0 pb-2">
-                <span class="font-weight-thin orange--text" style="font-size: 1.2rem">ALIAS</span>
-            </v-col>
-        </v-row>
-            
-        <v-row no-gutters class="justify-center align-center">
-            <v-col cols="12" md="6" class="px-1 d-flex justify-center align-center " >
+        <v-row no-gutters class="align-center alias-row">
+            <v-col cols="12" class="px-1 d-flex align-center">
+                <span class="font-weight-thin orange--text alias-label">ALIAS</span>
                 <v-text-field 
                     label="Ingrese ALIAS"
                     outlined
+                    dense
                     v-model="nickname"
-                    
+                    class="input-value-bold-lg alias-field flex-grow-1 ml-2"
+                    hide-details
                 />
             </v-col>
         </v-row>
            
-        <v-row class="justify-center align-center text-center py-0 pb-8 mt-2">
+        <v-row class="justify-center align-center text-center section-header">
             <v-col cols="12">
                 <span class="font-weight-thin orange--text " style="font-size: 1.3rem">Datos Miembro 1</span>
             </v-col>
     
-            <v-col cols="6" class="d-flex pl-15 pb-5 justify-center align-center">
+            <v-col cols="6" class="d-flex pl-15 justify-center align-center">
                 <v-divider :thickness="2" color="orange"></v-divider>
             </v-col>
                 
-            <v-col cols="6"  class="d-flex pr-15 pb-5 justify-center align-center ">
+            <v-col cols="6"  class="d-flex pr-15 justify-center align-center ">
                 <v-divider :thickness="2" color="orange"></v-divider>
             </v-col>
         </v-row>
@@ -69,6 +77,7 @@
                     dense
                     v-model="dniPartner"
                     type="number"
+                    class="input-value-bold-lg"
                     :rules='[(v) => !!v || "El campo es requerido"]'
                 />
             </v-col>
@@ -92,6 +101,7 @@
                 dense
                 v-model="namePartner"
                 type="text"
+                class="input-value-bold-lg"
             />   
             </v-col>
         </v-row>
@@ -121,7 +131,7 @@
             </v-col>
         </v-row>
         
-        <v-row class="justify-center align-center text-center py-0 pb-8 mt-2" v-if="selectVisit === 2">
+        <v-row class="justify-center align-center text-center section-header" v-if="selectVisit === 2">
             <v-col cols="12">
                 <span class="font-weight-thin orange--text" style="font-size: 1.3rem;">Datos Miembro 2</span>
             </v-col>
@@ -190,7 +200,7 @@
             </v-col>
         </v-row>
         
-        <v-row class="justify-center align-center pb-8 text-center py-0 mt-2">
+        <v-row class="justify-center align-center section-header text-center">
             <v-col cols="12">
                 <span class="font-weight-thin orange--text " style="font-size: 1.3rem;">Otra Información</span>
             </v-col>
@@ -208,7 +218,7 @@
             <v-col cols="12" class="px-1">
                 <v-textarea
                 label="Observaciones"
-                rows="3"
+                rows="2"
                 outlined
                 dense
                 
@@ -388,13 +398,76 @@
                 this.$http.get(process.env.VUE_APP_DEGIRA+"visits_types/get")
                 .then((response)=>{
                     if(response){
-                        vm.visits = response.data.data
+                        const all = response.data.data || []
+                        vm.visits = all.filter((v) => (v.description || '').toUpperCase() !== 'MENSUAL')
                     }
                 })
             },
             generateNumberDNI(){
                return this.$moment().format('YYYYMMDDHHmmSS');
             },
+            /** Color representativo del estado del socio (1-8). */
+            stateColorName(idState) {
+                if (idState == null) return 'grey';
+                switch (Number(idState)) {
+                    case 1: case 2: case 3: case 8: return 'green';   // VIP, Normal, Turista, Invitado
+                    case 4: return 'info';                             // Observado
+                    case 5: case 6: case 7: return 'red';               // No frecuente, Expulsado, Suspendido
+                    default: return 'orange';
+                }
+            },
+            /** Color representativo del tipo de visitante (1-5). */
+            visitTypeColorName(idVisitType) {
+                if (idVisitType == null) return 'grey';
+                switch (Number(idVisitType)) {
+                    case 1: return 'green';   // Solo
+                    case 2: return 'blue';    // Pareja / 2 personas
+                    case 3: return 'purple';
+                    case 4: return 'orange';
+                    case 5: return 'red';
+                    default: return 'grey';
+                }
+            },
         }
     }
 </script>
+
+<style scoped>
+.edit-partner-page {
+    padding-top: 0.5rem;
+    padding-bottom: 1rem;
+}
+@media (min-width: 960px) {
+    .edit-partner-page {
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+    }
+}
+.section-header {
+    padding-top: 0.25rem;
+    padding-bottom: 0.5rem;
+}
+.alias-row {
+    margin-bottom: 0.25rem;
+}
+.alias-label {
+    font-size: 1.2rem;
+    white-space: nowrap;
+}
+.alias-field {
+    min-width: 0;
+}
+@media (min-width: 960px) {
+    .section-header {
+        padding-top: 0.5rem;
+        padding-bottom: 1.5rem;
+    }
+}
+.select-text-4pt-larger {
+    font-size: calc(1em + 4pt);
+}
+.input-value-bold-lg ::v-deep input {
+    font-size: calc(1em + 2pt) !important;
+    font-weight: bold !important;
+}
+</style>

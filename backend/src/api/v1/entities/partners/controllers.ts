@@ -15,7 +15,10 @@ import {
   getHistogramData,
   getDatesWithVisits,
   getVisitsWithConsumptions,
-  getDatesWithConsumptions
+  getDatesWithConsumptions,
+  getMensualVisitTypeId,
+  mensualSchemePayment,
+  partnerAnotarNoPago,
 } from './helpers';
 
 
@@ -178,6 +181,7 @@ export const updatePartner = async (req: Request, res: Response) => {
       observations = "",
       suspension_reason = "",
       expultion_reason = "",
+      santion_date: santionDateParam = "",
     },
     params: {
       id_partner = "",
@@ -185,7 +189,8 @@ export const updatePartner = async (req: Request, res: Response) => {
   } = req;
 
   try {
-    const response = await partnerUpdate(roles, id_user, id_partner, alias, partner_dni, partner_name, partner_birthdate, partner_phone, affiliate_dni, affiliate_name, affiliate_birthdate, affiliate_phone, id_visit_type_usualy, id_state, observations, suspension_reason, expultion_reason);
+    const santionDate = santionDateParam && String(santionDateParam).trim() ? String(santionDateParam).trim() : undefined;
+    const response = await partnerUpdate(roles, id_user, id_partner, alias, partner_dni, partner_name, partner_birthdate, partner_phone, affiliate_dni, affiliate_name, affiliate_birthdate, affiliate_phone, id_visit_type_usualy, id_state, observations, suspension_reason, expultion_reason, santionDate);
     responseHandler(response, res);
   } catch (error: any) {
     const { code = 400, message = "Error Desconocido" } = error as IErrorResponse;
@@ -382,6 +387,82 @@ export const getDatesWithConsumptionsController = async (req: Request, res: Resp
   try {
     const dates = await getDatesWithConsumptions();
     res.status(200).send({ data: dates });
+  } catch (error: any) {
+    const { code = 400, message = 'Error Desconocido' } = error as IErrorResponse;
+    res.status(code).send({ message });
+  }
+};
+
+export const getMensualVisitTypeIdController = async (req: Request, res: Response) => {
+  try {
+    const id = await getMensualVisitTypeId();
+    res.status(200).send({ data: { id_visit_type_mensual: id } });
+  } catch (error: any) {
+    const { code = 400, message = 'Error Desconocido' } = error as IErrorResponse;
+    res.status(code).send({ message });
+  }
+};
+
+export const postMensualSchemeController = async (req: Request, res: Response) => {
+  const {
+    body: {
+      id_user = '',
+      roles = [],
+      id_partner = '',
+      santion_date: santionDateParam = '',
+      amount = '',
+    },
+  } = req;
+  try {
+    const id_partner_num = Number(id_partner);
+    const amount_num = Number(amount);
+    if (!id_partner_num || isNaN(id_partner_num)) {
+      return res.status(400).send({ message: 'id_partner inválido' });
+    }
+    if (amount === '' || isNaN(amount_num) || amount_num < 0) {
+      return res.status(400).send({ message: 'amount debe ser un número mayor o igual a 0' });
+    }
+    let santion_date: Date;
+    if (santionDateParam) {
+      santion_date = new Date(santionDateParam as string);
+      if (isNaN(santion_date.getTime())) {
+        return res.status(400).send({ message: 'santion_date inválida' });
+      }
+    } else {
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      santion_date = d;
+    }
+    const response = await mensualSchemePayment(
+      id_partner_num,
+      santion_date,
+      amount_num,
+      Number(id_user),
+      Array.isArray(roles) ? roles : [],
+    );
+    responseHandler(response, res);
+  } catch (error: any) {
+    const { code = 400, message = 'Error Desconocido' } = error as IErrorResponse;
+    res.status(code).send({ message });
+  }
+};
+
+export const patchPartnerNoPagaController = async (req: Request, res: Response) => {
+  const {
+    params: { id_partner = '' },
+    body: { id_user = '', roles = [] },
+  } = req;
+  try {
+    const id_partner_num = Number(id_partner);
+    if (!id_partner_num || isNaN(id_partner_num)) {
+      return res.status(400).send({ message: 'id_partner inválido' });
+    }
+    const response = await partnerAnotarNoPago(
+      id_partner_num,
+      Number(id_user),
+      Array.isArray(roles) ? roles : [],
+    );
+    responseHandler(response, res);
   } catch (error: any) {
     const { code = 400, message = 'Error Desconocido' } = error as IErrorResponse;
     res.status(code).send({ message });

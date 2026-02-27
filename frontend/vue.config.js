@@ -1,5 +1,11 @@
 module.exports = {
-    //transpileDependencies: ['vuetify']
+    transpileDependencies: [
+        'vuetify',
+        'jspdf',
+        'jspdf-autotable',
+        'fast-png',
+        'iobuffer',
+    ],
     /*
     configureWebpack: {
         devServer: {

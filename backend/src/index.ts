@@ -40,15 +40,9 @@ app.use(json({ limit: '50mb' }));
 app.use(urlencoded({ extended: true, limit: '50mb' }));
 
 // Servir archivos estáticos (imágenes subidas) ANTES de las rutas de la API
-// Determinar la ruta correcta según el entorno
-let uploadsPath: string;
-if (__dirname.includes('dist')) {
-  // Producción: dist está en backend/dist, uploads debería estar en backend/uploads
-  uploadsPath = path.join(__dirname, '../uploads');
-} else {
-  // Desarrollo con ts-node: __dirname es backend/src, uploads está en backend/src/uploads
-  uploadsPath = path.join(__dirname, './uploads');
-}
+// Usar process.cwd() para que coincida con donde upload.ts guarda (misma base en ambos)
+const projectRoot = process.cwd();
+let uploadsPath: string = path.join(projectRoot, 'uploads');
 
 console.log('Serving static files from:', uploadsPath);
 console.log('__dirname:', __dirname);
@@ -91,6 +85,7 @@ initAllAssociations();
 
 app.listen({ hostname, port }, () => {
   console.log(`Server running on http://${hostname}:${port}`);
+  console.log(`[BACKEND] Escuchando en puerto ${port} - Las peticiones a /api/v1/degira/ deben llegar AQUÍ`);
   if (process.env.CRON_ENABLE === 'true') {
     console.log('Cron enabled');
     partnersWithoutVisitsCron.start();

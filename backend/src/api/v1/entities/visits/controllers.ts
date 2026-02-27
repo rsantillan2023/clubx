@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { responseHandler } from "../../helpers";
 import { IErrorResponse } from "../../types/errorResponse.interface";
-import { entryRegister, exitRegister, getVisitsList, fastEntryRegister } from "./helpers";
+import { entryRegister, exitRegister, getVisitsList, fastEntryRegister, getVisitsPayingAtExit } from "./helpers";
 
 export const getVisits = async (req: Request, res: Response) => {
   const {
@@ -15,6 +15,21 @@ export const getVisits = async (req: Request, res: Response) => {
       )
     );
     responseHandler(response, res, Number(page), Number(pageSize));
+  } catch (error: any) {
+    const { code = 400, message = "Error Desconocido" } = error as IErrorResponse;
+    res.status(code).send({ message });
+  }
+};
+
+
+export const getVisitsPayingAtExitController = async (req: Request, res: Response) => {
+  const { query: { page, pageSize } } = req;
+  try {
+    const response = await getVisitsPayingAtExit({
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
+    responseHandler(response, res, Number(page) || 1, Number(pageSize) || 50);
   } catch (error: any) {
     const { code = 400, message = "Error Desconocido" } = error as IErrorResponse;
     res.status(code).send({ message });

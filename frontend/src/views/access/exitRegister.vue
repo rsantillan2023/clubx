@@ -9,14 +9,23 @@
                             <v-icon color="orange" large class="mr-3">mdi-exit-run</v-icon>
                             <div>
                                 <h2 class="mb-0 orange--text font-weight-bold">Registro de Salida</h2>
-                                <div class="d-flex align-center flex-wrap">
-                                    <span class="text-caption grey--text">Complete los datos para registrar la salida del socio</span>
-                                    <span 
-                                        v-if="partner && partner.total < consumedMin" 
-                                        class="text-caption red--text font-weight-bold ml-2">
-                                        El socio consumió ${{ partner.total }}, pero el consumo mínimo es ${{ consumedMin }}
-                                    </span>
+                                <div class="text-caption grey--text mb-1">
+                                    Complete los datos para registrar la salida del socio
                                 </div>
+                                <ul 
+                                    v-if="(partner && partner.total < consumedMin) || (partner && partner.es_pago_al_salir && partner.pendiente_entrada > 0)" 
+                                    class="red--text font-weight-medium text-body-2 pl-4 mb-0"
+                                    style="list-style-type: disc;">
+                                    <li 
+                                        v-if="partner && partner.total < consumedMin" 
+                                        class="mb-1">
+                                        El socio consumió ${{ partner.total }}, pero el consumo mínimo es ${{ consumedMin }}
+                                    </li>
+                                    <li 
+                                        v-if="partner && partner.es_pago_al_salir && partner.pendiente_entrada > 0">
+                                        Monto pendiente de pago (entrada): ${{ partner.pendiente_entrada }} — Se incluye en el total a abonar en esta salida.
+                                    </li>
+                                </ul>
                             </div>
                         </div>
                         <div class="d-flex flex-wrap">
@@ -60,6 +69,11 @@
                                     <span class="text-h5 orange--text font-weight-bold text-uppercase mr-3">
                                         {{formatAlias(partner.alias)}}
                                     </span>
+                                    <span class="text-body-2 grey--text mr-3 d-flex align-center">
+                                        <v-chip small color="orange" text-color="white">
+                                            {{partner.id_bracelet_1}}
+                                        </v-chip>
+                                    </span>
                                     <v-chip color="orange" text-color="white" class="mr-3">
                                         <v-icon left small>mdi-tag</v-icon>
                                         {{partner.visit_type?.description || 'Tipo de Visita'}}
@@ -75,12 +89,6 @@
                                         class="mr-3">
                                         {{partner.state.description}}
                                     </v-chip>
-                                    <span class="text-body-2 grey--text">
-                                        Número de tarjeta: 
-                                        <v-chip small color="orange" text-color="white" class="ml-1">
-                                            {{partner.id_bracelet_1}}
-                                        </v-chip>
-                                    </span>
                                 </div>
                             </v-col>
                         </v-row>
@@ -94,61 +102,55 @@
                         Detalles de la Visita
                     </v-card-title>
                     <v-card-text class="pa-4">
-                        <!-- Primera fila: Fechas y Día -->
-                        <v-row dense class="mb-2">
-                            <v-col cols="6" md="3">
-                                <div class="text-center">
-                                    <v-icon color="orange" class="mb-1">mdi-calendar</v-icon>
-                                    <div class="text-caption grey--text">Fecha de Entrada</div>
-                                    <div class="font-weight-bold">{{partner.visit_date ? formatDate(partner.visit_date, 'DD/MM/YYYY') : (partner.hour_entry ? formatDate(partner.hour_entry, 'DD/MM/YYYY') : 'N/A')}}</div>
+                        <!-- Una sola fila: Fechas, Día, Consumos (compacto) -->
+                        <v-row dense class="mb-0 align-center flex-nowrap" style="flex-wrap: nowrap; overflow-x: auto; justify-content: space-between;">
+                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
+                                <div class="text-center" style="min-width: 70px;">
+                                    <v-icon color="orange" x-small>mdi-calendar</v-icon>
+                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Fecha Entrada</div>
+                                    <div class="font-weight-bold text-caption" style="font-size: 0.7rem;">{{partner.visit_date ? formatDate(partner.visit_date, 'DD/MM/YYYY') : (partner.hour_entry ? formatDate(partner.hour_entry, 'DD/MM/YYYY') : 'N/A')}}</div>
                                 </div>
                             </v-col>
-                            <v-col cols="6" md="3">
-                                <div class="text-center">
-                                    <v-icon color="orange" class="mb-1">mdi-clock-outline</v-icon>
-                                    <div class="text-caption grey--text">Hora de Entrada</div>
-                                    <div class="font-weight-bold">{{formateHour(partner.hour_entry) || 'N/A'}}</div>
+                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
+                                <div class="text-center" style="min-width: 55px;">
+                                    <v-icon color="orange" x-small>mdi-clock-outline</v-icon>
+                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Hora</div>
+                                    <div class="font-weight-bold text-caption" style="font-size: 0.7rem;">{{formateHour(partner.hour_entry) || 'N/A'}}</div>
                                 </div>
                             </v-col>
-                            <v-col cols="6" md="3">
-                                <div class="text-center">
-                                    <v-icon color="orange" class="mb-1">mdi-calendar-week</v-icon>
-                                    <div class="text-caption grey--text">Día de Visita</div>
-                                    <div class="font-weight-bold">{{formatDay(partner.id_day) || 'N/A'}}</div>
+                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
+                                <div class="text-center" style="min-width: 60px;">
+                                    <v-icon color="orange" x-small>mdi-calendar-week</v-icon>
+                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Día</div>
+                                    <div class="font-weight-bold text-caption" style="font-size: 0.7rem;">{{formatDay(partner.id_day) || 'N/A'}}</div>
                                 </div>
                             </v-col>
-                            <v-col cols="6" md="3">
-                                <div class="text-center">
-                                    <v-icon color="orange" class="mb-1">mdi-calendar-clock</v-icon>
-                                    <div class="text-caption grey--text">Última Visita</div>
-                                    <div class="font-weight-bold">{{partner.last_visit ? formatDate(partner.last_visit, 'DD/MM/YYYY') : 'N/A'}}</div>
+                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
+                                <div class="text-center" style="min-width: 70px;">
+                                    <v-icon color="orange" x-small>mdi-calendar-clock</v-icon>
+                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Últ. Visita</div>
+                                    <div class="font-weight-bold text-caption" style="font-size: 0.7rem;">{{partner.last_visit ? formatDate(partner.last_visit, 'DD/MM/YYYY') : 'N/A'}}</div>
                                 </div>
                             </v-col>
-                        </v-row>
-
-                        <v-divider class="my-3"></v-divider>
-
-                        <!-- Segunda fila: Consumos -->
-                        <v-row dense class="mb-2">
-                            <v-col cols="6" md="3">
-                                <div class="text-center">
-                                    <v-icon color="orange" class="mb-1">mdi-cash</v-icon>
-                                    <div class="text-caption grey--text">Consumo Actual</div>
-                                    <div class="font-weight-bold orange--text">${{ partner.total || 0 }}</div>
+                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
+                                <div class="text-center" style="min-width: 75px;">
+                                    <v-icon color="orange" x-small>mdi-cash</v-icon>
+                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Consumo Actual</div>
+                                    <div class="font-weight-bold orange--text text-caption" style="font-size: 0.7rem;">${{ partner.total || 0 }}</div>
                                 </div>
                             </v-col>
-                            <v-col cols="6" md="3">
-                                <div class="text-center">
-                                    <v-icon color="orange" class="mb-1">mdi-cash-multiple</v-icon>
-                                    <div class="text-caption grey--text">Consumo Mínimo</div>
-                                    <div class="font-weight-bold orange--text">${{ consumedMin }}</div>
+                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
+                                <div class="text-center" style="min-width: 75px;">
+                                    <v-icon color="orange" x-small>mdi-cash-multiple</v-icon>
+                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Consumo Mín.</div>
+                                    <div class="font-weight-bold orange--text text-caption" style="font-size: 0.7rem;">${{ consumedMin }}</div>
                                 </div>
                             </v-col>
-                            <v-col cols="6" md="3">
-                                <div class="text-center">
-                                    <v-icon color="blue" class="mb-1">mdi-shopping</v-icon>
-                                    <div class="text-caption grey--text">Consumo en Visita</div>
-                                    <div class="font-weight-bold blue--text">${{ partner.visit_amount_consumed || 0 }}</div>
+                            <v-col cols="auto" class="pa-1 flex-grow-0">
+                                <div class="text-center" style="min-width: 75px;">
+                                    <v-icon color="blue" x-small>mdi-shopping</v-icon>
+                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Consumo Visita</div>
+                                    <div class="font-weight-bold blue--text text-caption" style="font-size: 0.7rem;">${{ partner.visit_amount_consumed || 0 }}</div>
                                 </div>
                             </v-col>
                         </v-row>
@@ -191,9 +193,9 @@
                         <!-- Observaciones de Entrada -->
                         <v-row v-if="partner.entry_visit_obs" class="mb-2">
                             <v-col cols="12">
-                                <v-alert type="info" dense outlined>
-                                    <div class="d-flex align-center">
-                                        <v-icon small left>mdi-information</v-icon>
+                                <v-alert :type="(partner.entry_visit_obs || '').includes('PAGAR_AL_SALIR') ? 'error' : 'info'" dense outlined>
+                                    <div class="d-flex align-center" :class="(partner.entry_visit_obs || '').includes('PAGAR_AL_SALIR') ? 'red--text' : ''">
+                                        <v-icon small left>{{ (partner.entry_visit_obs || '').includes('PAGAR_AL_SALIR') ? 'mdi-alert-circle' : 'mdi-information' }}</v-icon>
                                         <div>
                                             <strong>Observaciones de Entrada:</strong> {{ partner.entry_visit_obs }}
                                         </div>
@@ -457,7 +459,10 @@ import eventBus from '../../event-bus'
         },
         computed:{
             montoAbonar() {
+                if (!this.partner) return 0
                 let total = (parseFloat(this.partner.total) < parseFloat(this.consumedMin)) ? this.consumedMin : this.partner.total
+                const pendienteEntrada = (this.partner.pendiente_entrada != null && this.partner.pendiente_entrada > 0) ? parseFloat(this.partner.pendiente_entrada) : 0
+                total += pendienteEntrada
                 if(this.items.other_exit_paid) total +=  parseFloat(this.items.other_exit_paid)
                 if(this.methods.length > 0){
                     let pay_method_percent = this.methods.find((item) => item.id_payment_method == this.selectPayMethod).percent
@@ -609,6 +614,9 @@ import eventBus from '../../event-bus'
 
                     let exit_amount_paid = (parseFloat(this.partner.total) < parseFloat(this.consumedMin)) ? parseFloat(this.consumedMin) * (parseFloat(pay_method_percent) + 1) : parseFloat(this.partner.total) * (parseFloat(pay_method_percent) +1)
 
+                    const pendienteEntrada = (this.partner.pendiente_entrada != null && this.partner.pendiente_entrada > 0) ? parseFloat(this.partner.pendiente_entrada) : 0
+                    exit_amount_paid += pendienteEntrada
+
                     let other_paid = (this.items.other_exit_paid) ? parseFloat(this.items.other_exit_paid) * (parseFloat(pay_method_percent) +1) : 0
 
                     if(this.methods.find((item) => item.id_payment_method == this.selectPayMethod).id_payment_method == 5){
@@ -623,12 +631,14 @@ import eventBus from '../../event-bus'
                     let debio_pagar_other_exit_paid = (this.items.other_exit_paid) ? parseFloat(this.items.other_exit_paid) *
                         (parseFloat(pay_method_percent) + 1) : 0
 
+                    const had_to_paid_total = debio_pagar_consumo + debio_pagar_other_exit_paid + pendienteEntrada
+
                     let data = {
                         "id_state": "2",
                         "exit_visit_obs": this.items.exit_visit_obs,
                         "exit_amount_payed": exit_amount_paid,
                         "other_paid": other_paid,
-                        "had_to_paid": debio_pagar_consumo + debio_pagar_other_exit_paid,
+                        "had_to_paid": had_to_paid_total,
                         "other_paid_obs": this.items.other_exit_paid_obs,
                         "id_payment_method": this.selectPayMethod,
                     }

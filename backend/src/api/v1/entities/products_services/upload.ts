@@ -8,26 +8,9 @@ import { IErrorResponse } from '../../types/errorResponse.interface';
 const router = Router();
 
 // Configurar el directorio de almacenamiento
-// Determinar la ruta correcta según el entorno
-let baseUploadsDir: string;
-if (__dirname.includes('dist')) {
-  // Producción: dist está en backend/dist/api/v1/entities/products_services
-  // uploads debería estar en backend/uploads
-  baseUploadsDir = path.join(__dirname, '../../../../uploads');
-} else {
-  // Desarrollo con ts-node: __dirname es backend/src/api/v1/entities/products_services
-  // Necesitamos ir: backend/src/api/v1/entities/products_services -> backend/src/uploads
-  // Desde products_services subimos 4 niveles para llegar a backend/src:
-  //   1. products_services -> entities
-  //   2. entities -> v1
-  //   3. v1 -> api
-  //   4. api -> src
-  // Luego bajamos a uploads: src/uploads
-  // __dirname = backend/src/api/v1/entities/products_services
-  // ../../../../ = backend/src
-  // ./uploads = backend/src/uploads
-  baseUploadsDir = path.join(__dirname, '../../../../uploads');
-}
+// Misma base que index.ts: process.cwd()/uploads para que GET /uploads/... encuentre los archivos
+const projectRoot = process.cwd();
+const baseUploadsDir = path.join(projectRoot, 'uploads');
 const uploadsDir = path.join(baseUploadsDir, 'products-services');
 
 // Normalizar la ruta para evitar problemas con barras

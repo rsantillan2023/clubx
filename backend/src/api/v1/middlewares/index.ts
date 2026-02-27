@@ -62,7 +62,7 @@ export const cajaRoleValidator = async (
   next: NextFunction,
 ) => {
   try {
-    const { roles = [] } = req.body;
+    const roles = req.body.userAuthenticatedRoles ?? req.body.roles ?? [];
     if (roles.includes(ERoles.CAJA)) {
       req.body.roleValid = true
     }
@@ -78,7 +78,7 @@ export const adminRoleValidator = async (
   next: NextFunction,
 ) => {
   try {
-    const { roles = [] } = req.body;
+    const roles = req.body.userAuthenticatedRoles ?? req.body.roles ?? [];
     if (roles.includes(ERoles.ADMIN)) {
       req.body.roleValid = true
     }
@@ -96,8 +96,8 @@ export const barmanRoleValidator = async (
   next: NextFunction,
 ) => {
   try {
-    const { roles = [] } = req.body;
-    if (roles.includes(ERoles.BARMAN) ) {
+    const roles = req.body.userAuthenticatedRoles ?? req.body.roles ?? [];
+    if (roles.includes(ERoles.BARMAN)) {
       req.body.roleValid = true
     }
     return next();
@@ -113,7 +113,7 @@ export const guardaRopaRoleValidator = async (
   next: NextFunction,
 ) => {
   try {
-    const { roles = [] } = req.body;
+    const roles = req.body.userAuthenticatedRoles ?? req.body.roles ?? [];
     if (roles.includes(ERoles.GUARDAROPA)) {
       req.body.roleValid = true
     }

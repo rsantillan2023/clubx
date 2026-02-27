@@ -58,7 +58,8 @@
                                 dense
                                 outlined
                                 item-text="description"
-                                item-value="id_visit_type">
+                                item-value="id_visit_type"
+                                :disabled="isMensualLocked">
                     </v-select>  
                 </v-col>
                 
@@ -254,6 +255,7 @@ import eventBus from '../../event-bus'
                 selectState: null,
                 selectVisit: null,
                 selectPayMethod: 1,
+                isMensualLocked: false,
                 other_visit_obs: "",
                 errorMessage: false,
                 price: 0,
@@ -342,20 +344,18 @@ import eventBus from '../../event-bus'
                 this.$http.get(process.env.VUE_APP_DEGIRA+"visits_types/get")
                 .then((response)=>{
                     if(response){
-                        vm.visits = response.data.data
-                        /*vm.visits = response.data.data.filter((item) => {
-                            if(vm.partner.id_visit_type_usualy == 1 || vm.partner.id_visit_type_usualy == 4){
-                                if(item.id_visit_type == vm.partner.id_visit_type_usualy) return item
-                            }
-
-                            if(vm.partner.id_visit_type_usualy == 2){
-                                if([1,2,4].includes(item.id_visit_type)) return item
-                            }
-
-                            if(vm.partner.id_visit_type_usualy == 3) return item
-
-                        })*/
-                        vm.selectVisit = vm.partner.id_visit_type_usualy
+                        const all = response.data.data || []
+                        const mensualType = all.find((v) => (v.description || '').toUpperCase() === 'MENSUAL')
+                        const idMensual = mensualType ? mensualType.id_visit_type : null
+                        if (idMensual != null && vm.partner && vm.partner.id_visit_type_usualy === idMensual) {
+                            vm.visits = [mensualType]
+                            vm.selectVisit = idMensual
+                            vm.isMensualLocked = true
+                        } else {
+                            vm.visits = all.filter((v) => (v.description || '').toUpperCase() !== 'MENSUAL')
+                            vm.selectVisit = vm.partner.id_visit_type_usualy
+                            vm.isMensualLocked = false
+                        }
                         vm.getPrice()
                     }
                 })

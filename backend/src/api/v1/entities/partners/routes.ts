@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { adminRoleValidator, cajaRoleValidator, jwtValidator, validRole } from '../../middlewares';
-import { getPartnerByDni, getPartnerInside, getPartnerSearcher, membershipReactivation, partnerMembershipChecker, postPartnerDischarge, updatePartner, postPartnerLiteDischarge, getPartners, getHistoricalVisitsController, getHistogramController, getDatesWithVisitsController, getVisitsWithConsumptionsController, getDatesWithConsumptionsController } from './controllers';
+import { getPartnerByDni, getPartnerInside, getPartnerSearcher, membershipReactivation, partnerMembershipChecker, postPartnerDischarge, updatePartner, postPartnerLiteDischarge, getPartners, getHistoricalVisitsController, getHistogramController, getDatesWithVisitsController, getVisitsWithConsumptionsController, getDatesWithConsumptionsController, getMensualVisitTypeIdController, postMensualSchemeController, patchPartnerNoPagaController } from './controllers';
 
 const routes = Router();
 
@@ -31,5 +31,10 @@ routes.get('/dates-with-visits', [jwtValidator, adminRoleValidator, cajaRoleVali
 routes.get('/visits-consumptions', [jwtValidator, adminRoleValidator, cajaRoleValidator, validRole], getVisitsWithConsumptionsController)
 
 routes.get('/dates-with-consumptions', [jwtValidator, adminRoleValidator, cajaRoleValidator, validRole], getDatesWithConsumptionsController)
+
+// Esquema de pago mensual (solo admin)
+routes.get('/mensual-visit-type-id', [jwtValidator, adminRoleValidator, validRole], getMensualVisitTypeIdController)
+routes.post('/mensual-scheme', [jwtValidator, adminRoleValidator, validRole], postMensualSchemeController)
+routes.patch('/:id_partner/no-paga', [jwtValidator, adminRoleValidator, validRole], patchPartnerNoPagaController)
 
 export = routes;

@@ -7,6 +7,7 @@
     "dev": "nodemon",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:dev": "npm run build && node dist/index.js",
     "start:local": "ts-node src/api/local/server.ts",
     "sync:start": "ts-node sync-service/index.ts",
     "tsc": "tsc",
@@ -16,6 +17,14 @@
     "pre-commit": "lint-staged",
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:endpoints": "ts-node src/scripts/test-endpoints.ts",
+    "count": "ts-node src/scripts/count-env-tables.ts",
+    "count:local": "ts-node src/scripts/count-local-tables.ts",
+    "count:env": "ts-node src/scripts/count-env-tables.ts",
+    "check:screens": "ts-node src/scripts/check-screens-config.ts",
+    "migrate:prod-to-model": "ts-node src/scripts/migrate-prod-to-model.ts",
+    "users:list": "ts-node src/scripts/list-users-for-login.ts",
+    "users:set-password": "ts-node src/scripts/set-user-password.ts",
+    "users:set-password-method": "ts-node src/scripts/set-user-password-method.ts",
     "prepare": "npx husky install"
   },
   "repository": {

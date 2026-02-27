@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container fluid class="pa-3">
     <v-row>
       <v-col cols="12">
         <h1 class="text-h4 mb-4 orange--text">Base de datos de socios</h1>
@@ -77,8 +77,8 @@
 
     <!-- Grilla de datos -->
     <v-row>
-      <v-col cols="12">
-        <v-card outlined>
+      <v-col cols="12" class="table-col-full-width">
+        <v-card outlined class="overflow-x-auto">
           <v-data-table
             :headers="headers"
             :items="partners"
@@ -130,6 +130,50 @@
                 {{ truncateText(item.observations, 40) }}
               </span>
               <span v-else>-</span>
+            </template>
+
+            <template v-slot:item.actions="{ item }">
+              <div class="d-flex flex-wrap align-center justify-start actions-cell">
+                <div class="action-btn-block">
+                  <v-btn
+                    color="orange"
+                    dark
+                    icon
+                    x-small
+                    class="ma-1"
+                    @click="goTo('/editPartner', item)"
+                  >
+                    <v-icon small>mdi-pencil</v-icon>
+                  </v-btn>
+                  <span class="action-label">Edit</span>
+                </div>
+                <div v-if="isNormalState(item) && !isPartnerInEstablishment(item)" class="action-btn-block">
+                  <v-btn
+                    color="orange"
+                    dark
+                    icon
+                    x-small
+                    class="ma-1"
+                    @click="goTo('/entryRegisterLite', item)"
+                  >
+                    <v-icon small>mdi-cash-fast</v-icon>
+                  </v-btn>
+                  <span class="action-label">Entrar</span>
+                </div>
+                <div v-if="item.state && item.state.id_state === 5" class="action-btn-block">
+                  <v-btn
+                    color="orange"
+                    dark
+                    icon
+                    x-small
+                    class="ma-1"
+                    @click="goTo('/membershipReactivation', item)"
+                  >
+                    <v-icon small>mdi-account-reactivate</v-icon>
+                  </v-btn>
+                  <span class="action-label">Membr</span>
+                </div>
+              </div>
             </template>
           </v-data-table>
         </v-card>
@@ -195,6 +239,7 @@ export default {
         { text: 'Tipo Visita', value: 'id_visit_type_usualy', sortable: true, width: '100px' },
         { text: 'Fecha Alta', value: 'partner_discharge_date', sortable: true, width: '100px' },
         { text: 'Observaciones', value: 'observations', sortable: false, width: '150px' },
+        { text: 'Acciones', value: 'actions', sortable: false, width: '220px', align: 'left' },
       ],
     };
   },
@@ -305,11 +350,30 @@ export default {
       this.filters.id_state = [];
       this.loadPartners();
     },
+    /** Navegar a una ruta con el socio en el store (como en partnerSearch). */
+    goTo(path, item) {
+      this.$store.commit('setPartner', item);
+      this.$router.push(path);
+    },
+    /** Estados que pueden registrar ingreso: VIP, Normal, Turista, Observado, Invitado (1,2,3,4,8). */
+    isNormalState(item) {
+      const id = item?.state?.id_state;
+      return id != null && [1, 2, 3, 4, 8].includes(Number(id));
+    },
+    /** Si el socio está actualmente en el club (la lista puede no traer este dato). */
+    isPartnerInEstablishment(item) {
+      return item && item.partner_in_establishment === true;
+    },
   },
 };
 </script>
 
 <style scoped>
+.table-col-full-width {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .text-truncate {
   display: inline-block;
   max-width: 200px;
@@ -321,6 +385,11 @@ export default {
 /* Estilos para hacer la tabla más compacta */
 .compact-table ::v-deep .v-data-table__wrapper {
   font-size: 0.65rem;
+  overflow-x: auto;
+}
+
+.compact-table ::v-deep .v-data-table {
+  min-width: 100%;
 }
 
 .compact-table ::v-deep th {
@@ -342,6 +411,23 @@ export default {
 
 .compact-table ::v-deep .v-data-table__mobile-row {
   font-size: 0.65rem;
+}
+
+.actions-cell {
+  min-width: 200px;
+}
+
+.action-btn-block {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 2px;
+}
+
+.action-label {
+  font-size: 0.5rem;
+  line-height: 1.1;
+  color: #666;
 }
 </style>
 

@@ -135,27 +135,34 @@
                 
                 let cleanUrl = url.trim();
                 
-                // Si ya es una URL completa (http:// o https://), usarla tal cual
-                if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
-                    return cleanUrl;
+                // Origen = mismo que el API (VUE_APP_DEGIRA)
+                let apiOrigin = 'http://localhost:3000';
+                try {
+                    if (process.env.VUE_APP_DEGIRA) apiOrigin = new URL(process.env.VUE_APP_DEGIRA).origin;
+                } catch (_e) {
+                    // fallback apiOrigin
                 }
                 
-                // Limpiar cualquier /v1/ que pueda estar en la ruta
+                // Si ya es URL completa, reconstruir con origen correcto (por si en BD tiene otro puerto)
+                if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+                    try {
+                        const pathname = new URL(cleanUrl).pathname;
+                        return pathname ? `${apiOrigin}${pathname}` : cleanUrl;
+                    } catch (_e) {
+                        return cleanUrl;
+                    }
+                }
+                
                 cleanUrl = cleanUrl.replace(/^\/v1\//, '/');
                 
-                // Si es una ruta relativa que empieza con /uploads/, construir la URL completa
                 if (cleanUrl.startsWith('/uploads/')) {
-                    // Usar el puerto del backend (3000) para servir las imágenes
-                    return `http://localhost:3000${cleanUrl}`;
+                    return `${apiOrigin}${cleanUrl}`;
                 }
                 
-                // Si no empieza con /uploads/ y no es una URL completa, puede ser solo el nombre del archivo
-                // En ese caso, intentar construir la ruta completa
                 if (cleanUrl && !cleanUrl.includes('/')) {
-                    return `http://localhost:3000/uploads/products-services/${cleanUrl}`;
+                    return `${apiOrigin}/uploads/products-services/${cleanUrl}`;
                 }
                 
-                // Si no se puede determinar, retornar null para que se muestre el placeholder
                 return null;
             },
             handleImageError(event) {

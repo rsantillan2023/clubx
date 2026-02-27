@@ -98,6 +98,16 @@
               <v-icon left small>mdi-pencil</v-icon>
               Editar Masivo
             </v-btn>
+            <v-btn
+              small
+              color="white"
+              text
+              @click="openSpreadsheetDialog"
+              class="mr-2"
+            >
+              <v-icon left small>mdi-table-edit</v-icon>
+              Modificar como planilla
+            </v-btn>
             <v-spacer></v-spacer>
             <v-btn
               small
@@ -523,6 +533,133 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Modal planilla: edición tipo hoja de cálculo -->
+    <v-dialog v-model="spreadsheetDialog" max-width="95%" persistent scrollable>
+      <v-card>
+        <v-card-title class="orange darken-2 white--text">
+          <v-icon left color="white">mdi-table-edit</v-icon>
+          Modificar como planilla ({{ spreadsheetRows.length }} producto(s))
+          <v-spacer></v-spacer>
+          <v-btn icon dark @click="closeSpreadsheetDialog">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text class="pa-2">
+          <div ref="spreadsheetWrapper" class="spreadsheet-wrapper">
+            <v-simple-table dense fixed-header class="spreadsheet-table">
+              <thead>
+                <tr>
+                  <th class="text-left" style="width: 60px;">ID</th>
+                  <th class="text-left" style="min-width: 140px;">Descripción</th>
+                  <th class="text-left" style="min-width: 100px;">Descripción larga</th>
+                  <th class="text-left" style="width: 100px;">Precio</th>
+                  <th class="text-left" style="width: 90px;">Unid. de Stock</th>
+                  <th class="text-left" style="width: 100px;">Producto Destacado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, rowIndex) in spreadsheetRows" :key="row.id_product_service">
+                  <td class="pa-1">
+                    <span class="font-weight-bold">{{ row.id_product_service }}</span>
+                  </td>
+                  <td class="pa-1" :data-spreadsheet-row="rowIndex" data-spreadsheet-col="description">
+                    <v-text-field
+                      :value="row.description"
+                      @input="row.description = $event"
+                      dense
+                      hide-details
+                      single-line
+                      outlined
+                      class="mt-0 pt-0 spreadsheet-cell"
+                      @focus="selectAllOnFocus($event)"
+                      @keydown.down.prevent="focusSpreadsheetCell(rowIndex + 1, 'description')"
+                      @keydown.up.prevent="focusSpreadsheetCell(rowIndex - 1, 'description')"
+                      @keydown.right.prevent="focusSpreadsheetCell(rowIndex, 'long_description')"
+                      @keydown.left.prevent="focusSpreadsheetCell(rowIndex, 'description')"
+                    ></v-text-field>
+                  </td>
+                  <td class="pa-1" :data-spreadsheet-row="rowIndex" data-spreadsheet-col="long_description">
+                    <v-text-field
+                      :value="row.long_description"
+                      @input="row.long_description = $event"
+                      dense
+                      hide-details
+                      single-line
+                      outlined
+                      class="mt-0 pt-0 spreadsheet-cell"
+                      @focus="selectAllOnFocus($event)"
+                      @keydown.down.prevent="focusSpreadsheetCell(rowIndex + 1, 'long_description')"
+                      @keydown.up.prevent="focusSpreadsheetCell(rowIndex - 1, 'long_description')"
+                      @keydown.right.prevent="focusSpreadsheetCell(rowIndex, 'price')"
+                      @keydown.left.prevent="focusSpreadsheetCell(rowIndex, 'description')"
+                    ></v-text-field>
+                  </td>
+                  <td class="pa-1" :data-spreadsheet-row="rowIndex" data-spreadsheet-col="price">
+                    <v-text-field
+                      :value="row.price"
+                      @input="row.price = $event === '' ? '' : (parseFloat($event) || 0)"
+                      type="text"
+                      inputmode="decimal"
+                      dense
+                      hide-details
+                      single-line
+                      outlined
+                      prefix="$"
+                      class="mt-0 pt-0 spreadsheet-cell"
+                      @focus="selectAllOnFocus($event)"
+                      @keydown.down.prevent="focusSpreadsheetCell(rowIndex + 1, 'price')"
+                      @keydown.up.prevent="focusSpreadsheetCell(rowIndex - 1, 'price')"
+                      @keydown.right.prevent="focusSpreadsheetCell(rowIndex, 'available')"
+                      @keydown.left.prevent="focusSpreadsheetCell(rowIndex, 'long_description')"
+                    ></v-text-field>
+                  </td>
+                  <td class="pa-1" :data-spreadsheet-row="rowIndex" data-spreadsheet-col="available">
+                    <v-text-field
+                      :value="row.available"
+                      @input="row.available = $event === '' ? '' : (parseInt($event, 10) || 0)"
+                      type="text"
+                      inputmode="numeric"
+                      dense
+                      hide-details
+                      single-line
+                      outlined
+                      class="mt-0 pt-0 spreadsheet-cell"
+                      @focus="selectAllOnFocus($event)"
+                      @keydown.down.prevent="focusSpreadsheetCell(rowIndex + 1, 'available')"
+                      @keydown.up.prevent="focusSpreadsheetCell(rowIndex - 1, 'available')"
+                      @keydown.right.prevent="focusSpreadsheetCell(rowIndex, 'featured')"
+                      @keydown.left.prevent="focusSpreadsheetCell(rowIndex, 'price')"
+                    ></v-text-field>
+                  </td>
+                  <td class="pa-1" :data-spreadsheet-row="rowIndex" data-spreadsheet-col="featured">
+                    <v-checkbox
+                      v-model="row.featured"
+                      hide-details
+                      dense
+                      class="mt-0 pt-0 spreadsheet-cell"
+                      color="orange"
+                      @keydown.down.prevent="focusSpreadsheetCell(rowIndex + 1, 'featured')"
+                      @keydown.up.prevent="focusSpreadsheetCell(rowIndex - 1, 'featured')"
+                      @keydown.right.prevent="focusSpreadsheetCell(rowIndex, 'featured')"
+                      @keydown.left.prevent="focusSpreadsheetCell(rowIndex, 'available')"
+                    ></v-checkbox>
+                  </td>
+                </tr>
+              </tbody>
+            </v-simple-table>
+          </div>
+        </v-card-text>
+        <v-card-actions class="pt-0">
+          <v-spacer></v-spacer>
+          <v-btn color="grey" text @click="closeSpreadsheetDialog">Cancelar</v-btn>
+          <v-btn color="primary" @click="saveSpreadsheet" :loading="spreadsheetSaving">
+            <v-icon left>mdi-content-save</v-icon>
+            Grabar
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -560,8 +697,8 @@ export default {
         { text: 'Imagen', value: 'url_image', sortable: false, width: '80px' },
         { text: 'Descripción', value: 'description', sortable: true },
         { text: 'Precio', value: 'price', sortable: true, width: '120px' },
-        { text: 'Disponible', value: 'available', sortable: true, width: '120px', align: 'right' },
-        { text: 'Destacado', value: 'featured', sortable: true, width: '100px' },
+        { text: 'Unid. de Stock', value: 'available', sortable: true, width: '120px', align: 'right' },
+        { text: 'Producto Destacado', value: 'featured', sortable: true, width: '100px' },
         { text: 'Acciones', value: 'actions', sortable: false, width: '120px' },
       ],
       selectedItems: [],
@@ -569,6 +706,9 @@ export default {
       deleteDialog: false,
       bulkPriceDialog: false,
       bulkUpdateDialog: false,
+      spreadsheetDialog: false,
+      spreadsheetRows: [],
+      spreadsheetSaving: false,
       editingItem: null,
       itemToDelete: null,
       formData: {
@@ -870,20 +1010,37 @@ export default {
     },
     getImageUrl(url) {
       if (!url) return null;
-      
-      // Si ya es una URL completa (http:// o https://), usarla tal cual
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
+
+      // Origen donde se sirven las imágenes = mismo que el API (VUE_APP_DEGIRA)
+      let apiOrigin = 'http://localhost:3000';
+      try {
+        if (process.env.VUE_APP_DEGIRA) apiOrigin = new URL(process.env.VUE_APP_DEGIRA).origin;
+      } catch (_e) {
+        // usar fallback apiOrigin
       }
-      
-      // Si es una ruta relativa que empieza con /uploads/, construir la URL completa
-      // Limpiar cualquier /v1/ que pueda estar en la ruta
+
+      // Si ya es una URL completa, usar solo el pathname y reconstruir con el origen correcto
+      // (así aunque en BD esté guardado otro puerto, se muestra con el actual)
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        try {
+          const pathname = new URL(url).pathname;
+          return pathname ? `${apiOrigin}${pathname}` : url;
+        } catch (_e) {
+          return url;
+        }
+      }
+
+      // Ruta relativa: limpiar /v1/ y construir URL completa
       let cleanPath = url.replace(/^\/v1\//, '/');
       if (cleanPath.startsWith('/uploads/')) {
-        return `http://localhost:3000${cleanPath}`;
+        return `${apiOrigin}${cleanPath}`;
       }
-      
-      // Si no empieza con /uploads/, retornar la URL original (puede ser una URL externa sin http://)
+
+      // Solo nombre de archivo: asumir products-services
+      if (cleanPath && !cleanPath.includes('/')) {
+        return `${apiOrigin}/uploads/products-services/${cleanPath}`;
+      }
+
       return url;
     },
     removeImage() {
@@ -892,41 +1049,39 @@ export default {
       this.imagePreview = null;
     },
     handleImageError(event, item = null) {
-      const imageUrl = event.target.src;
+      if (!event || !event.target) {
+        this.imageError = true;
+        return;
+      }
       const imgElement = event.target;
-      
+      const imageUrl = imgElement.src;
+
       // Prevenir loop infinito: si ya intentamos cargar esta imagen, no intentar de nuevo
       if (imgElement.dataset.retryAttempted === 'true') {
         console.error('Image failed to load after retry:', imageUrl);
         this.imageError = true;
-        // Mostrar un placeholder en lugar de seguir intentando
-        imgElement.style.display = 'none';
+        if (imgElement.style) imgElement.style.display = 'none';
         return;
       }
-      
+
       console.error('Error al cargar imagen:', imageUrl);
-      
-      // Marcar que ya intentamos cargar esta imagen
+
       imgElement.dataset.retryAttempted = 'true';
-      
-      // Intentar cargar la imagen directamente usando getImageUrl
+
       if (item && item.url_image) {
-        // Usar getImageUrl para construir la URL correcta
         const directUrl = this.getImageUrl(item.url_image);
         console.log('Attempting direct URL:', directUrl);
-        
-        // Usar setTimeout para evitar el loop inmediato
         setTimeout(() => {
-          if (directUrl && directUrl !== imageUrl) {
+          if (directUrl && directUrl !== imageUrl && imgElement) {
             imgElement.src = directUrl;
           } else {
             this.imageError = true;
-            imgElement.style.display = 'none';
+            if (imgElement.style) imgElement.style.display = 'none';
           }
         }, 100);
       } else {
         this.imageError = true;
-        imgElement.style.display = 'none';
+        if (imgElement.style) imgElement.style.display = 'none';
       }
     },
     async saveItem() {
@@ -1187,6 +1342,133 @@ export default {
       };
       this.bulkUpdateDialog = true;
     },
+    openSpreadsheetDialog() {
+      if (this.selectedItems.length === 0) {
+        eventBus.$emit('toast', {
+          show: true,
+          text: 'Debe seleccionar al menos un producto/servicio',
+          color: 'warning',
+        });
+        return;
+      }
+      this.spreadsheetRows = this.selectedItems.map(item => ({
+        id_product_service: item.id_product_service,
+        description: item.description || '',
+        long_description: item.long_description || '',
+        price: parseFloat(item.price) || 0,
+        available: item.available != null ? item.available : 0,
+        featured: Boolean(item.featured),
+        url_image: item.url_image || '',
+      }));
+      this.spreadsheetDialog = true;
+    },
+    closeSpreadsheetDialog() {
+      this.spreadsheetDialog = false;
+      this.spreadsheetRows = [];
+    },
+    selectAllOnFocus(e) {
+      if (e.target && e.target.tagName === 'INPUT') {
+        this.$nextTick(() => e.target.select());
+      }
+    },
+    focusSpreadsheetCell(rowIndex, colKey) {
+      if (!this.$refs.spreadsheetWrapper) return;
+      if (rowIndex < 0 || rowIndex >= this.spreadsheetRows.length) return;
+      const td = this.$refs.spreadsheetWrapper.querySelector(
+        `[data-spreadsheet-row="${rowIndex}"][data-spreadsheet-col="${colKey}"]`
+      );
+      if (td) {
+        const input = td.querySelector('input');
+        if (input) {
+          input.focus();
+          if (colKey !== 'featured') input.select();
+        }
+      }
+    },
+    async saveSpreadsheet() {
+      for (const row of this.spreadsheetRows) {
+        if (!(row.description && String(row.description).trim())) {
+          eventBus.$emit('toast', {
+            show: true,
+            text: `ID ${row.id_product_service}: La descripción es obligatoria`,
+            color: 'error',
+          });
+          return;
+        }
+        const priceNum = Number(row.price);
+        if (priceNum === null || priceNum === undefined || isNaN(priceNum) || priceNum < 0) {
+          eventBus.$emit('toast', {
+            show: true,
+            text: `ID ${row.id_product_service}: El precio debe ser mayor o igual a 0`,
+            color: 'error',
+          });
+          return;
+        }
+      }
+
+      this.spreadsheetSaving = true;
+      try {
+        const userData = this.$store.state.userLoged?.data || {};
+        const roles = this.extractRoleIds(userData);
+
+        for (const row of this.spreadsheetRows) {
+          let cleanImageUrl = row.url_image;
+          if (cleanImageUrl) {
+            cleanImageUrl = cleanImageUrl.replace(/^\/v1\//, '/');
+            if (cleanImageUrl.startsWith('http://') || cleanImageUrl.startsWith('https://')) {
+              try {
+                const urlObj = new URL(cleanImageUrl);
+                cleanImageUrl = urlObj.pathname.replace(/^\/v1\//, '/');
+              } catch (e) {
+                console.error('Error parsing URL:', e);
+              }
+            }
+          }
+
+          const payload = {
+            description: (row.description || '').trim(),
+            available: row.available !== undefined && row.available !== null && row.available !== ''
+              ? Number(row.available)
+              : 0,
+            price: Number(row.price),
+            featured: Boolean(row.featured),
+            id_user: userData.id_user,
+            roles,
+          };
+          if (row.long_description != null && String(row.long_description).trim()) {
+            payload.long_description = String(row.long_description).trim();
+          }
+          // No enviar url_image desde la planilla para no pisar la imagen existente
+          if (cleanImageUrl) {
+            payload.url_image = cleanImageUrl;
+          }
+
+          await this.$http.put(
+            `${process.env.VUE_APP_DEGIRA}products_services/${row.id_product_service}`,
+            payload
+          );
+        }
+
+        eventBus.$emit('toast', {
+          show: true,
+          text: 'Productos actualizados correctamente',
+          color: 'success',
+        });
+        this.closeSpreadsheetDialog();
+        this.selectedItems = [];
+        await this.loadProductsServices();
+      } catch (error) {
+        console.error('Error al guardar planilla:', error);
+        const message = error.response?.data?.message || 'Error al guardar los productos';
+        eventBus.$emit('toast', {
+          show: true,
+          text: message,
+          color: 'error',
+        });
+      } finally {
+        this.spreadsheetSaving = false;
+      }
+    },
     closeBulkUpdateDialog() {
       this.bulkUpdateDialog = false;
       this.bulkFormData = {
@@ -1268,6 +1550,13 @@ export default {
 <style scoped>
 .compact-table >>> .v-data-table__wrapper {
   max-height: 600px;
+}
+.spreadsheet-wrapper {
+  max-height: 70vh;
+  overflow: auto;
+}
+.spreadsheet-table >>> .v-text-field__slot input {
+  font-size: 0.875rem;
 }
 </style>
 

@@ -3,6 +3,8 @@
 -- Inserta los productos con sus precios en efectivo
 -- =====================================================
 
+SET NAMES utf8mb4;
+
 -- Verificar productos existentes antes de insertar
 SELECT 
     'PRODUCTOS EXISTENTES' AS verificacion,

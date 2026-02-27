@@ -7,7 +7,7 @@ import VisitType from "../../../../database/schemas/degira/models/visit_type.mod
 import { argentinianDate, errorHandler, getPagination, getVisitDate } from "../../helpers";
 import { EOpertationType } from '../operations_types/types';
 import { ERoles } from '../roles/types';
-import { IExitRegister, ITicketAPI, IVisitParams, IVisitRegister } from "./types";
+import { IExitRegister, ITicketAPI, IVisitParams, IVisitRegister, PAGAR_AL_SALIR } from "./types";
 import { entryValidator, exitValidator, generarIdBasadoEnFecha } from "./middlewares";
 import Ticket from "../../../../database/schemas/degira/models/ticket.model";
 import TicketDetails from "../../../../database/schemas/degira/models/ticket_details.model";
@@ -68,6 +68,43 @@ export const getVisitsList = async (visitParams: IVisitParams) => {
     }
 }
 
+/** Visitas activas (sin hour_exit) que eligieron pagar entrada a la salida (entry_visit_obs contiene PAGAR_AL_SALIR) */
+export const getVisitsPayingAtExit = async (params: { page?: number; pageSize?: number } = {}) => {
+    try {
+        const { page, pageSize } = params;
+        const include: Includeable[] = [visitTypeIncludeable, partnerIncludeable, stateIncludeable, dayIncludeable];
+        const where = {
+            hour_exit: null,
+            entry_visit_obs: { [Op.like]: `%${PAGAR_AL_SALIR}%` },
+        };
+        let findOptions: FindAndCountOptions = { include, where };
+
+        if (page && pageSize) {
+            const { limit, offset } = getPagination(page, pageSize);
+            findOptions = { ...findOptions, offset, limit };
+        }
+
+        const result = await Visit.findAndCountAll(findOptions) as { rows: any[]; count: number };
+        const rows = result.rows.map((row: any) => {
+            const v = row.toJSON();
+            const entryPaid = Number(v.entry_amount_paid || 0);
+            const hadToPaid = Number(v.had_to_paid || 0);
+            const pendienteEntrada = Math.max(0, hadToPaid - entryPaid);
+            return {
+                ...v,
+                entry_amount_paid: entryPaid,
+                had_to_paid: hadToPaid,
+                pendiente_entrada: pendienteEntrada,
+                es_pago_al_salir: (String(v.entry_visit_obs || "")).includes(PAGAR_AL_SALIR),
+            };
+        });
+        return { rows, count: result.count };
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+};
+
 export const entryRegister = async (
     //id_visit: number,
     roles: number[],
@@ -96,7 +133,7 @@ export const entryRegister = async (
             id_state,
             id_visit_type,
             //other_visit_obs,
-            //entry_visit_obs,
+            entry_visit_obs,
             entry_amount_paid,
             other_paid,
             other_paid_obs,

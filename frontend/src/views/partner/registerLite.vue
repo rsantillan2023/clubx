@@ -199,7 +199,8 @@
                 this.$http.get(process.env.VUE_APP_DEGIRA+"visits_types/get")
                 .then((response)=>{
                     if(response){
-                        vm.visits = response.data.data
+                        const all = response.data.data || []
+                        vm.visits = all.filter((v) => (v.description || '').toUpperCase() !== 'MENSUAL')
                         vm.getPrice()
                     }
                 })

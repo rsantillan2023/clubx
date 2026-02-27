@@ -63,6 +63,12 @@ export const priceSearcher = async (price: IPrice) => {
             dayVisit = EDays.CualquierDia;
         }
 
+        // Workaround MENSUAL: precios solo para id_day = 8 (Cualquier día)
+        const visitTypeRow = await VisitType.findByPk(id_visit_type);
+        if (visitTypeRow && (visitTypeRow.get('description') as string) === 'MENSUAL') {
+            dayVisit = EDays.CualquierDia;
+        }
+
 
         const priceFinder = await Price.findOne({
             where: {
@@ -174,9 +180,6 @@ export const getPricesList = async (
 
         return plainPrices;
     } catch (error) {
-        if (transaction) {
-            await transaction.rollback();
-        }
         throw error;
     }
 };
@@ -281,7 +284,7 @@ export const bulkUpdatePrices = async (
                 operation_date: argentinianDate(new Date()),
                 id_role: roles,
             }),
-            id_role: roles[0],
+            id_role: roles && roles.length > 0 ? roles[0] : undefined,
             operation_date: argentinianDate(new Date()),
             id_day: dayOfWeek,
         }, { transaction });
@@ -291,9 +294,6 @@ export const bulkUpdatePrices = async (
             updated: updates,
         };
     } catch (error) {
-        if (transaction) {
-            await transaction.rollback();
-        }
         throw error;
     }
 };
@@ -338,7 +338,7 @@ export const updatePrice = async (
 
         const dayOfWeek = getVisitDate(new Date());
 
-        // Registrar operación
+        // Registrar operación (id_role debe ser number; roles ya viene como number[] desde el controller)
         await Operation.create({
             id_user,
             id_operation_type: EOpertationType.GESTION_PRECIOS,
@@ -356,7 +356,7 @@ export const updatePrice = async (
                 operation_date: argentinianDate(new Date()),
                 id_role: roles,
             }),
-            id_role: roles[0],
+            id_role: roles && roles.length > 0 ? roles[0] : undefined,
             operation_date: argentinianDate(new Date()),
             id_day: dayOfWeek,
         }, { transaction });
@@ -368,9 +368,6 @@ export const updatePrice = async (
             newPrice: parseFloat(total_amount.toFixed(2)),
         };
     } catch (error) {
-        if (transaction) {
-            await transaction.rollback();
-        }
         throw error;
     }
 };
