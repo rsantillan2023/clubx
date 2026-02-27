@@ -68,8 +68,9 @@ No subas `.env` al repo; configúralas solo en Railway.
 
 ### 3.3 Dominio público del backend
 
-- En el servicio backend: **Settings** → **Networking** → **Generate Domain**.
-- Anota la URL, por ejemplo: `https://clubx-backend-xxxx.up.railway.app`
+- En el servicio backend: **Settings** → **Networking**.
+- Si ves **"Generate Domain"**, haz clic y anota la URL (ej. `https://clubz.up.railway.app`).
+- Si solo dice **"Public domain will be generated"**: el dominio se crea **automáticamente** cuando el servicio está público. Activa la red pública si hace falta; tras el primer deploy, la URL aparecerá en esa sección o en **Deployments**. Copia esa URL para las variables del frontend.
 
 ---
 
@@ -109,8 +110,9 @@ En Vue CLI estas variables se “hornean” en el build; si cambias la URL del b
 
 ### 4.3 Dominio público del frontend
 
-- **Settings** → **Networking** → **Generate Domain** para el servicio frontend.
-- Esa será la URL de la app (ej. `https://clubx-frontend-xxxx.up.railway.app`).
+- En el servicio frontend: **Settings** → **Networking**.
+- Si hay botón **"Generate Domain"**, úsalo y anota la URL.
+- Si solo dice **"Public domain will be generated"**: el dominio se genera **solo** cuando el servicio tenga red pública y un deploy correcto. Tras desplegar, la URL aparecerá en **Networking** o en el último **Deployment**. Esa es la URL de tu app en producción.
 
 ---
 
