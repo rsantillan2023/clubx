@@ -27,9 +27,9 @@ if (process.env.VUE_APP_ENVIROMENT == "production") {
   });
 
   Sentry.setContext("user", {
-    userName: store.state.user.Usu_Nombre,
-    loggedInStatus: store.state.user.loggedInStatus,
-    authToken: store.state.user.authToken,
+    userName: store.state.user?.Usu_Nombre,
+    loggedInStatus: store.state.user?.loggedInStatus,
+    authToken: store.state.user?.authToken,
     currentVersion: store.state.currentVersion,
     promptInstall: store.state.promptInstall,
     referer: store.state.referer,
