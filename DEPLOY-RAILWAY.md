@@ -72,6 +72,18 @@ No subas `.env` al repo; configúralas solo en Railway.
 - Si ves **"Generate Domain"**, haz clic y anota la URL (ej. `https://clubz.up.railway.app`).
 - Si solo dice **"Public domain will be generated"**: el dominio se crea **automáticamente** cuando el servicio está público. Activa la red pública si hace falta; tras el primer deploy, la URL aparecerá en esa sección o en **Deployments**. Copia esa URL para las variables del frontend.
 
+### 3.4 Persistir imágenes subidas (Volume)
+
+En Railway el disco del contenedor es **efímero**: tras un redeploy las imágenes en `uploads/` se pierden y las URLs como `https://clubz.up.railway.app/uploads/products-services/xxx.png` devuelven 404. Para que persistan:
+
+1. En el **servicio backend** → **Settings** (o pestaña **Volumes**).
+2. **Add Volume** (o **Create Volume**). Nombre ej. `backend-uploads`.
+3. **Mount path**: debe ser la ruta donde la app escribe. Usa **`/app/uploads`** (Railway suele ejecutar la app desde `/app`). Si tu build usa otro directorio, pon esa ruta + `/uploads` (ej. `/home/railway/uploads`).
+4. Guarda. Railway inyecta `RAILWAY_VOLUME_MOUNT_PATH` con ese path; el backend ya usa esa variable para leer/escribir y servir archivos.
+5. Redeploy del backend. A partir de ahí las imágenes subidas se guardan en el Volume y sobreviven a los redeploys.
+
+Si tu servicio no corre desde `/app`, en **Variables** del backend define **`UPLOADS_PATH`** con el mismo path que pusiste en el Volume (ej. `/data/uploads`) y redeploy.
+
 ---
 
 ## 4. Servicio 2: Frontend

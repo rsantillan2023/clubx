@@ -8,9 +8,9 @@ import { IErrorResponse } from '../../types/errorResponse.interface';
 const router = Router();
 
 // Configurar el directorio de almacenamiento
-// Misma base que index.ts: process.cwd()/uploads para que GET /uploads/... encuentre los archivos
+// En Railway: usar el mismo path que index.ts (RAILWAY_VOLUME_MOUNT_PATH o UPLOADS_PATH) para persistir en Volume
 const projectRoot = process.cwd();
-const baseUploadsDir = path.join(projectRoot, 'uploads');
+const baseUploadsDir = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.UPLOADS_PATH || path.join(projectRoot, 'uploads');
 const uploadsDir = path.join(baseUploadsDir, 'products-services');
 
 // Normalizar la ruta para evitar problemas con barras

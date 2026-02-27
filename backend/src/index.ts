@@ -40,9 +40,9 @@ app.use(json({ limit: '50mb' }));
 app.use(urlencoded({ extended: true, limit: '50mb' }));
 
 // Servir archivos estáticos (imágenes subidas) ANTES de las rutas de la API
-// Usar process.cwd() para que coincida con donde upload.ts guarda (misma base en ambos)
+// En Railway: usar Volume montado y RAILWAY_VOLUME_MOUNT_PATH para que uploads persistan tras redeploy
 const projectRoot = process.cwd();
-let uploadsPath: string = path.join(projectRoot, 'uploads');
+let uploadsPath: string = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.UPLOADS_PATH || path.join(projectRoot, 'uploads');
 
 console.log('Serving static files from:', uploadsPath);
 console.log('__dirname:', __dirname);
