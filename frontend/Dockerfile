@@ -12,10 +12,13 @@ COPY . ./
 ENV NODE_ENV=production
 RUN npm run build
 
-# Stage 2: servir con nginx
+# Stage 2: servir con nginx (escucha en PORT que inyecta Railway)
 FROM nginx:1.21-alpine
 
 COPY --from=builder /app/dist /var/www/html/dist
-COPY ./nginx/config/nginx.conf /etc/nginx/nginx.conf
+COPY ./nginx/config/nginx.conf.template /etc/nginx/nginx.conf.template
+COPY ./docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
+CMD ["/docker-entrypoint.sh"]
