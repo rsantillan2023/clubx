@@ -1,15 +1,15 @@
 # Stage 1: build con Node oficial (evita NodeSource/apt que fallan en Railway)
 FROM node:18-alpine AS builder
 
-ARG ENVIROMENT=production
-ENV NODE_ENV=production
-
+# Sin NODE_ENV=production aquí: npm debe instalar devDependencies (@vue/cli-service)
+# para que "npm run build" encuentre vue-cli-service.
 WORKDIR /app
 
 COPY package.json ./
 RUN npm install --legacy-peer-deps
 
 COPY . ./
+ENV NODE_ENV=production
 RUN npm run build
 
 # Stage 2: servir con nginx
