@@ -88,7 +88,7 @@
 
                     <v-col cols="6" class="d-flex justify-end">
                         <v-icon 
-                            v-if="item.payed == 0 && item.quantity > 0 && (roles.includes(1))" 
+                            v-if="item.payed == 0 && item.quantity > 0 && (roles.includes(1) || roles.includes(2) || roles.includes(3))" 
                             @click="$emit('clickAnular', item)"
                             color="orange">
                             mdi-delete

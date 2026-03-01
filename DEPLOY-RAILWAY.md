@@ -76,13 +76,17 @@ No subas `.env` al repo; configúralas solo en Railway.
 
 En Railway el disco del contenedor es **efímero**: tras un redeploy las imágenes en `uploads/` se pierden y las URLs como `https://clubz.up.railway.app/uploads/products-services/xxx.png` devuelven 404. Para que persistan:
 
-1. En el **servicio backend** → **Settings** (o pestaña **Volumes**).
-2. **Add Volume** (o **Create Volume**). Nombre ej. `backend-uploads`.
-3. **Mount path**: debe ser la ruta donde la app escribe. Usa **`/app/uploads`** (Railway suele ejecutar la app desde `/app`). Si tu build usa otro directorio, pon esa ruta + `/uploads` (ej. `/home/railway/uploads`).
-4. Guarda. Railway inyecta `RAILWAY_VOLUME_MOUNT_PATH` con ese path; el backend ya usa esa variable para leer/escribir y servir archivos.
-5. Redeploy del backend. A partir de ahí las imágenes subidas se guardan en el Volume y sobreviven a los redeploys.
+**Dónde crear el Volume (no está en Settings):**
 
-Si tu servicio no corre desde `/app`, en **Variables** del backend define **`UPLOADS_PATH`** con el mismo path que pusiste en el Volume (ej. `/data/uploads`) y redeploy.
+1. Abrí el **proyecto** en Railway (la vista donde ves los servicios en un canvas).
+2. **Opción A:** Pulsá **Ctrl+K** (Windows/Linux) o **Cmd+K** (Mac) para abrir la **Command Palette**, escribí **"volume"** y elegí la opción para crear un volume.
+3. **Opción B:** Hacé **clic derecho** sobre el **canvas** (el fondo donde están los bloques del backend y frontend) y en el menú buscá **"Add Volume"** / **"Create Volume"** o similar.
+4. Te pedirá **a qué servicio conectar el volume**: elegí el **backend**.
+5. Configurá el **mount path** del volume: **`/app/uploads`** (Railway suele ejecutar la app desde `/app`). Si en los logs del backend ves otro directorio de trabajo, usá esa ruta + `/uploads`. Ese path se configura en la ventana del volume o en **Settings** del servicio backend (sección del volume).
+6. Guardá. Railway inyecta `RAILWAY_VOLUME_MOUNT_PATH` con ese path; el backend ya usa esa variable para leer/escribir y servir archivos.
+7. **Redeploy** del backend. A partir de ahí las imágenes subidas se guardan en el Volume y sobreviven a los redeploys.
+
+Si tu servicio no corre desde `/app`, en **Variables** del backend definí **`UPLOADS_PATH`** con el mismo path que pusiste en el Volume (ej. `/data/uploads`) y redeploy.
 
 ---
 

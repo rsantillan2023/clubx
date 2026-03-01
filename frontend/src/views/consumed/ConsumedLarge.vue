@@ -92,7 +92,7 @@
 
             <template v-slot:item.actions="{ item }">
               <v-icon
-                v-if="item.payed == 0 && item.quantity > 0 && (roles.includes(1))"
+                v-if="item.payed == 0 && item.quantity > 0 && (roles.includes(1) || roles.includes(2) || roles.includes(3))"
                 small
                 color="orange"
                 @click="$emit('clickAnular', item)">mdi-delete
