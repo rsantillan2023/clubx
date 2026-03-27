@@ -213,17 +213,24 @@
           <p class="text-caption grey--text mb-3">
             Para asignar <strong>MENSUAL</strong> use la pantalla «Esquema de pago mensual». Si pasaba de MENSUAL a otro tipo, se limpian vencimiento y montos del esquema en el socio.
           </p>
-          <v-select
-            v-model="selectedVisitTypeId"
-            :items="visitTypesForChange"
-            item-text="description"
-            item-value="id_visit_type"
-            label="Nuevo tipo"
-            outlined
-            dense
-            hide-details="auto"
-            :menu-props="visitTypeSelectMenuProps"
-          ></v-select>
+          <label class="visit-type-native-label text-body-2 grey--text text--darken-1" for="visit-type-select-native">
+            Nuevo tipo
+          </label>
+          <!-- select nativo: v-select dentro de v-dialog falla en Vuetify 2 (menú no abre / queda detrás) -->
+          <select
+            id="visit-type-select-native"
+            v-model.number="selectedVisitTypeId"
+            class="visit-type-native-select"
+            aria-label="Nuevo tipo de visita"
+          >
+            <option
+              v-for="t in visitTypesForChange"
+              :key="t.id_visit_type"
+              :value="Number(t.id_visit_type)"
+            >
+              {{ t.description }}
+            </option>
+          </select>
           <p v-if="partnerVisitType && visitTypesForChange.length === 0" class="text-caption red--text mt-2">
             No hay tipos de visita cargados. Actualice la página o revise la conexión.
           </p>
@@ -342,15 +349,6 @@ export default {
       const cur = this.currentPartnerVisitTypeId;
       if (cur == null) return true;
       return Number(this.selectedVisitTypeId) !== cur;
-    },
-    /** Evita que el menú del select quede bajo el overlay del diálogo (Vuetify 2). */
-    visitTypeSelectMenuProps() {
-      return {
-        offsetY: true,
-        maxHeight: 360,
-        zIndex: 10000,
-        contentClass: 'visit-type-select-menu',
-      };
     },
   },
   methods: {
@@ -592,13 +590,38 @@ export default {
 .dialog-visit-type-card {
   overflow: visible !important;
 }
+
+.visit-type-native-label {
+  display: block;
+  margin-bottom: 6px;
+}
+.visit-type-native-select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font-size: 1rem;
+  line-height: 1.4;
+  border: 1px solid rgba(0, 0, 0, 0.38);
+  border-radius: 4px;
+  background-color: #fff;
+  color: rgba(0, 0, 0, 0.87);
+  cursor: pointer;
+}
+.visit-type-native-select:focus {
+  outline: none;
+  border-color: #fb8c00;
+  box-shadow: 0 0 0 2px rgba(251, 140, 0, 0.25);
+}
+.theme--dark .visit-type-native-select {
+  background-color: #1e1e1e;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.38);
+}
 </style>
 
 <style>
-/* Clase aplicada al menú del v-select (se monta en body) */
-.visit-type-select-menu {
-  z-index: 10000 !important;
-}
 .dialog-visit-type-root {
   overflow: visible !important;
 }
