@@ -69,11 +69,8 @@ export const postPartnerValidator = async (
         }
       }
     }
-    //PARTNER_PHONE
-    if (!partner_phone && !partner_phone.length) {
-      isValid = false;
-      message += '- El teléfono del socio es requerido';
-    } else if (partner_phone) {
+    //PARTNER_PHONE (opcional; si viene, no debe estar duplicado)
+    if (partner_phone != null && String(partner_phone).trim().length > 0) {
       const partner = await Partner.findOne({
         where: {
           [Op.or]: [{ partner_phone }, { affiliate_phone: partner_phone }],

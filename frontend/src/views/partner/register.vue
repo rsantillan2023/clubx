@@ -184,7 +184,7 @@
                     hide-details="auto"
                     type="number"
                     v-model="phonePartner"
-                    :rules='[(v) => !!v || "El campo es requerido", (v) => (v != null && v.toString().length == 10) || "El teléfono debe contener 10 dígitos (Cod. Area + Nro de telefono)"]'
+                    :rules='[(v) => (v == null || String(v).trim() === "") || (String(v).length == 10) || "El teléfono debe contener 10 dígitos (Cod. Area + Nro de telefono)"]'
                 />
             </v-col>
             <v-col cols="12" md="4" class="px-1">
