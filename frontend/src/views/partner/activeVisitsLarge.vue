@@ -182,6 +182,9 @@
                     obj.extra_exit_obs = data.extra_exit_obs
                     obj.entry_visit_obs = data.entry_visit_obs
                     obj.other_visit_obs = data.other_visit_obs
+                    obj.had_to_paid = data.had_to_paid
+                    obj.pendiente_entrada = data.pendiente_entrada
+                    obj.es_pago_al_salir = data.es_pago_al_salir
                     vm.$store.commit('setPartner', obj)
                     vm.$router.push(`/exitRegister`)
                 }

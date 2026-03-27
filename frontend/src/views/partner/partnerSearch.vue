@@ -342,7 +342,10 @@
                                         extra_exit: visitData.extra_exit,
                                         extra_exit_obs: visitData.extra_exit_obs,
                                         entry_visit_obs: visitData.entry_visit_obs,
-                                        other_visit_obs: visitData.other_visit_obs
+                                        other_visit_obs: visitData.other_visit_obs,
+                                        had_to_paid: visitData.had_to_paid,
+                                        pendiente_entrada: visitData.pendiente_entrada,
+                                        es_pago_al_salir: visitData.es_pago_al_salir,
                                     }
                                     vm.$store.commit('setPartner', obj)
                                     vm.$router.push('/exitRegister')
@@ -408,7 +411,10 @@
                                         extra_exit: visitData.extra_exit,
                                         extra_exit_obs: visitData.extra_exit_obs,
                                         entry_visit_obs: visitData.entry_visit_obs,
-                                        other_visit_obs: visitData.other_visit_obs
+                                        other_visit_obs: visitData.other_visit_obs,
+                                        had_to_paid: visitData.had_to_paid,
+                                        pendiente_entrada: visitData.pendiente_entrada,
+                                        es_pago_al_salir: visitData.es_pago_al_salir,
                                     }
                                     vm.$store.commit('setPartner', obj)
                                     vm.$router.push('/exitRegister')

@@ -148,6 +148,7 @@ export default {
             partner.total = visit.visit_amount_consumed || 0;
             partner.pendiente_entrada = visit.pendiente_entrada;
             partner.es_pago_al_salir = visit.es_pago_al_salir;
+            partner.had_to_paid = visit.had_to_paid;
             if (visit.visit_type) partner.visit_type = visit.visit_type;
             if (visit.state) partner.state = visit.state;
             this.$store.commit('setPartner', partner);

@@ -13,17 +13,11 @@
                                     Complete los datos para registrar la salida del socio
                                 </div>
                                 <ul 
-                                    v-if="(partner && partner.total < consumedMin) || (partner && partner.es_pago_al_salir && partner.pendiente_entrada > 0)" 
+                                    v-if="partner && partner.total < consumedMin" 
                                     class="red--text font-weight-medium text-body-2 pl-4 mb-0"
                                     style="list-style-type: disc;">
-                                    <li 
-                                        v-if="partner && partner.total < consumedMin" 
-                                        class="mb-1">
+                                    <li class="mb-1">
                                         El socio consumió ${{ partner.total }}, pero el consumo mínimo es ${{ consumedMin }}
-                                    </li>
-                                    <li 
-                                        v-if="partner && partner.es_pago_al_salir && partner.pendiente_entrada > 0">
-                                        Monto pendiente de pago (entrada): ${{ partner.pendiente_entrada }} — Se incluye en el total a abonar en esta salida.
                                     </li>
                                 </ul>
                             </div>
@@ -139,7 +133,7 @@
                                     <div class="font-weight-bold orange--text text-caption" style="font-size: 0.7rem;">${{ partner.total || 0 }}</div>
                                 </div>
                             </v-col>
-                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
+                            <v-col v-if="parseFloat(partner.total || 0) <= parseFloat(consumedMin || 0)" cols="auto" class="pa-1 pr-2 flex-grow-0">
                                 <div class="text-center" style="min-width: 75px;">
                                     <v-icon color="orange" x-small>mdi-cash-multiple</v-icon>
                                     <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Consumo Mín.</div>
@@ -148,9 +142,9 @@
                             </v-col>
                             <v-col cols="auto" class="pa-1 flex-grow-0">
                                 <div class="text-center" style="min-width: 75px;">
-                                    <v-icon color="blue" x-small>mdi-shopping</v-icon>
-                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Consumo Visita</div>
-                                    <div class="font-weight-bold blue--text text-caption" style="font-size: 0.7rem;">${{ partner.visit_amount_consumed || 0 }}</div>
+                                    <v-icon color="error" x-small>mdi-shopping</v-icon>
+                                    <div class="text-caption error--text font-weight-medium" style="font-size: 0.65rem; line-height: 1.2;">Debe en Consumos</div>
+                                    <div class="font-weight-bold error--text" style="font-size: 0.8rem; line-height: 1.2;">${{ partner.visit_amount_consumed || 0 }}</div>
                                 </div>
                             </v-col>
                         </v-row>
@@ -179,28 +173,19 @@
                                     <div class="font-weight-bold green--text">${{ partner.extra_entry || 0 }}</div>
                                 </div>
                             </v-col>
+                            <v-col v-if="mostrarDebeEntradaEstacionamiento" cols="12" md="4">
+                                <div class="text-center pa-2">
+                                    <v-icon color="error" large class="mb-1">mdi-cash-multiple</v-icon>
+                                    <div class="text-body-2 error--text font-weight-medium">Debe de entrada y/o estacionamiento</div>
+                                    <div class="text-h5 font-weight-bold error--text mt-1">${{ pendienteEntradaEfectivo }}</div>
+                                </div>
+                            </v-col>
                             <v-col cols="12" md="4" v-if="partner.extra_entry_obs">
                                 <div class="text-center">
                                     <v-icon color="green" class="mb-1">mdi-note-text</v-icon>
                                     <div class="text-caption grey--text">Obs. Extra Entrada</div>
                                     <div class="font-weight-bold text-body-2">{{ partner.extra_entry_obs }}</div>
                                 </div>
-                            </v-col>
-                        </v-row>
-
-                        <v-divider class="my-3" v-if="partner.entry_visit_obs"></v-divider>
-
-                        <!-- Observaciones de Entrada -->
-                        <v-row v-if="partner.entry_visit_obs" class="mb-2">
-                            <v-col cols="12">
-                                <v-alert :type="(partner.entry_visit_obs || '').includes('PAGAR_AL_SALIR') ? 'error' : 'info'" dense outlined>
-                                    <div class="d-flex align-center" :class="(partner.entry_visit_obs || '').includes('PAGAR_AL_SALIR') ? 'red--text' : ''">
-                                        <v-icon small left>{{ (partner.entry_visit_obs || '').includes('PAGAR_AL_SALIR') ? 'mdi-alert-circle' : 'mdi-information' }}</v-icon>
-                                        <div>
-                                            <strong>Observaciones de Entrada:</strong> {{ partner.entry_visit_obs }}
-                                        </div>
-                                    </div>
-                                </v-alert>
                             </v-col>
                         </v-row>
 
@@ -458,11 +443,23 @@ import eventBus from '../../event-bus'
             }
         },
         computed:{
+            /** Pendiente de entrada: had_to_paid menos entry_amount_paid y extra_entry (no negativo). */
+            pendienteEntradaEfectivo() {
+                if (!this.partner) return 0
+                const had = parseFloat(this.partner.had_to_paid || 0)
+                const entry = parseFloat(this.partner.entry_amount_paid || 0)
+                const extra = parseFloat(this.partner.extra_entry || 0)
+                if (Number.isNaN(had)) return 0
+                return Math.max(0, had - entry - extra)
+            },
+            /** Mostrar «Debe entrada/estacionamiento» solo si queda pendiente (entrada + extra no cubren had_to_paid). */
+            mostrarDebeEntradaEstacionamiento() {
+                return this.pendienteEntradaEfectivo > 1e-6
+            },
             montoAbonar() {
                 if (!this.partner) return 0
                 let total = (parseFloat(this.partner.total) < parseFloat(this.consumedMin)) ? this.consumedMin : this.partner.total
-                const pendienteEntrada = (this.partner.pendiente_entrada != null && this.partner.pendiente_entrada > 0) ? parseFloat(this.partner.pendiente_entrada) : 0
-                total += pendienteEntrada
+                total += this.pendienteEntradaEfectivo
                 if(this.items.other_exit_paid) total +=  parseFloat(this.items.other_exit_paid)
                 if(this.methods.length > 0){
                     let pay_method_percent = this.methods.find((item) => item.id_payment_method == this.selectPayMethod).percent
@@ -614,7 +611,7 @@ import eventBus from '../../event-bus'
 
                     let exit_amount_paid = (parseFloat(this.partner.total) < parseFloat(this.consumedMin)) ? parseFloat(this.consumedMin) * (parseFloat(pay_method_percent) + 1) : parseFloat(this.partner.total) * (parseFloat(pay_method_percent) +1)
 
-                    const pendienteEntrada = (this.partner.pendiente_entrada != null && this.partner.pendiente_entrada > 0) ? parseFloat(this.partner.pendiente_entrada) : 0
+                    const pendienteEntrada = this.pendienteEntradaEfectivo
                     exit_amount_paid += pendienteEntrada
 
                     let other_paid = (this.items.other_exit_paid) ? parseFloat(this.items.other_exit_paid) * (parseFloat(pay_method_percent) +1) : 0

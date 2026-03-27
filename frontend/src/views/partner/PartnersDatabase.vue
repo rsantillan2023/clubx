@@ -63,14 +63,14 @@
       </v-col>
       <v-col cols="12" md="2" class="d-flex align-center">
         <v-btn
-          color="orange"
+          color="primary"
           dark
           block
           @click="loadPartners"
           :loading="loading"
         >
           <v-icon left>mdi-reload</v-icon>
-          Actualizar
+          Buscar
         </v-btn>
       </v-col>
     </v-row>
