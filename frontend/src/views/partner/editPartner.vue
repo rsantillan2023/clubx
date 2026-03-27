@@ -28,7 +28,6 @@
                     label="Tipo de Visitante"
                     dense
                     outlined
-                    disabled
                     item-text="description"
                     item-value="id_visit_type">
                     <template v-slot:selection="{ item }">
@@ -399,7 +398,14 @@
                 .then((response)=>{
                     if(response){
                         const all = response.data.data || []
-                        vm.visits = all.filter((v) => (v.description || '').toUpperCase() !== 'MENSUAL')
+                        const currentId = vm.$store.state.partner && vm.$store.state.partner.id_visit_type_usualy
+                        vm.visits = all.filter((v) => {
+                            const isMensual = (v.description || '').toUpperCase().trim() === 'MENSUAL'
+                            if (isMensual) {
+                                return currentId != null && Number(v.id_visit_type) === Number(currentId)
+                            }
+                            return true
+                        })
                     }
                 })
             },
