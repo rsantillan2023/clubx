@@ -194,12 +194,18 @@
     </v-row>
 
     <!-- Cambiar tipo de visita (incl. salir de MENSUAL) -->
-    <v-dialog v-model="dialogVisitType" max-width="480px" persistent>
-      <v-card>
+    <v-dialog
+      v-model="dialogVisitType"
+      max-width="480px"
+      persistent
+      :retain-focus="false"
+      content-class="dialog-visit-type-root"
+    >
+      <v-card class="dialog-visit-type-card">
         <v-card-title class="headline orange--text">
           Cambiar tipo de visita
         </v-card-title>
-        <v-card-text v-if="partnerVisitType">
+        <v-card-text v-if="partnerVisitType" class="dialog-visit-type-text">
           <p class="text-body-2 mb-2">
             <strong>{{ partnerVisitType.alias }}</strong>
             — actual: {{ partnerVisitType.visit_type?.description || 'N/A' }}
@@ -215,6 +221,8 @@
             label="Nuevo tipo"
             outlined
             dense
+            hide-details="auto"
+            :menu-props="visitTypeSelectMenuProps"
           ></v-select>
           <p v-if="partnerVisitType && visitTypesForChange.length === 0" class="text-caption red--text mt-2">
             No hay tipos de visita cargados. Actualice la página o revise la conexión.
@@ -334,6 +342,15 @@ export default {
       const cur = this.currentPartnerVisitTypeId;
       if (cur == null) return true;
       return Number(this.selectedVisitTypeId) !== cur;
+    },
+    /** Evita que el menú del select quede bajo el overlay del diálogo (Vuetify 2). */
+    visitTypeSelectMenuProps() {
+      return {
+        offsetY: true,
+        maxHeight: 360,
+        zIndex: 10000,
+        contentClass: 'visit-type-select-menu',
+      };
     },
   },
   methods: {
@@ -566,6 +583,24 @@ export default {
   font-size: 0.5rem;
   line-height: 1.1;
   color: #666;
+}
+
+/* Diálogo + select: sin esto el combo no abre o el listado queda invisible detrás del modal */
+.dialog-visit-type-text {
+  overflow: visible !important;
+}
+.dialog-visit-type-card {
+  overflow: visible !important;
+}
+</style>
+
+<style>
+/* Clase aplicada al menú del v-select (se monta en body) */
+.visit-type-select-menu {
+  z-index: 10000 !important;
+}
+.dialog-visit-type-root {
+  overflow: visible !important;
 }
 </style>
 
