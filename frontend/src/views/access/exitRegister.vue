@@ -12,12 +12,24 @@
                                 <div class="text-caption grey--text mb-1">
                                     Complete los datos para registrar la salida del socio
                                 </div>
+                                <ul
+                                    v-if="consumeBreakdownLoaded && partner"
+                                    class="red--text font-weight-medium text-body-2 pl-4 mb-1 mt-1"
+                                    style="list-style-type: disc;">
+                                    <li class="mb-0">
+                                        Consumo de descartables por: <strong>${{ consumoFueraFormateado }}</strong>
+                                    </li>
+                                </ul>
                                 <ul 
-                                    v-if="partner && partner.total < consumedMin" 
+                                    v-if="partner && aplicaConsumoMinimo" 
                                     class="red--text font-weight-medium text-body-2 pl-4 mb-0"
                                     style="list-style-type: disc;">
-                                    <li class="mb-1">
-                                        El socio consumió ${{ partner.total }}, pero el consumo mínimo es ${{ consumedMin }}
+                                    <li v-if="consumeBreakdownLoaded" class="mb-1">
+                                        Consumo que cuenta para el mínimo: <strong>${{ consumoDentroFormateado }}</strong>.
+                                        El mínimo del club es <strong>${{ consumedMin }}</strong>.
+                                    </li>
+                                    <li v-else class="mb-1">
+                                        Consumo registrado en ticket: <strong>${{ totalConsumoMostrado }}</strong>; el consumo mínimo es <strong>${{ consumedMin }}</strong>.
                                     </li>
                                 </ul>
                             </div>
@@ -130,10 +142,10 @@
                                 <div class="text-center" style="min-width: 75px;">
                                     <v-icon color="orange" x-small>mdi-cash</v-icon>
                                     <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Consumo Actual</div>
-                                    <div class="font-weight-bold orange--text text-caption" style="font-size: 0.7rem;">${{ partner.total || 0 }}</div>
+                                    <div class="font-weight-bold orange--text text-caption" style="font-size: 0.7rem;">${{ totalConsumoMostrado }}</div>
                                 </div>
                             </v-col>
-                            <v-col v-if="parseFloat(partner.total || 0) <= parseFloat(consumedMin || 0)" cols="auto" class="pa-1 pr-2 flex-grow-0">
+                            <v-col v-if="parseFloat(totalConsumoMostrado || 0) <= parseFloat(consumedMin || 0)" cols="auto" class="pa-1 pr-2 flex-grow-0">
                                 <div class="text-center" style="min-width: 75px;">
                                     <v-icon color="orange" x-small>mdi-cash-multiple</v-icon>
                                     <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Consumo Mín.</div>
@@ -348,7 +360,7 @@
                 <v-card elevation="2" class="pa-4">
                     <div class="d-flex flex-wrap justify-center align-center">
                         <v-btn 
-                            v-if="partner && partner.total > 0"
+                            v-if="partner && parseFloat(totalConsumoMostrado) > 0"
                             large
                             outlined
                             color="orange" 
@@ -417,6 +429,10 @@ import eventBus from '../../event-bus'
                 },
                 errorMessage: false,
                 confirmDialog: false,
+                consumeBreakdownLoaded: false,
+                consumeTotalTicket: 0,
+                consumeTotalDentroMinimo: 0,
+                consumeTotalFueraMinimo: 0,
                 
             }
         },
@@ -425,6 +441,7 @@ import eventBus from '../../event-bus'
             this.getTipos();
             this.getPaymentMethod();
             this.loadVisitData();
+            this.fetchConsumeBreakdown();
         },
         beforeMount() {
             console.log('partner exit', this.$store.state.partner)
@@ -456,9 +473,52 @@ import eventBus from '../../event-bus'
             mostrarDebeEntradaEstacionamiento() {
                 return this.pendienteEntradaEfectivo > 1e-6
             },
+            /** Total ticket (todos los productos); con desglose, coincide con la suma de get/consume. */
+            totalConsumoMostrado() {
+                if (!this.partner) return 0
+                if (this.consumeBreakdownLoaded) return this.consumeTotalTicket
+                return parseFloat(this.partner.total || 0)
+            },
+            /** Consumo que compara contra el mínimo (sin líneas «Fuera de consumo Minimo-»). */
+            consumoDentroParaAlerta() {
+                if (!this.partner) return 0
+                if (this.consumeBreakdownLoaded) return this.consumeTotalDentroMinimo
+                return parseFloat(this.partner.total || 0)
+            },
+            consumoDentroFormateado() {
+                return (Number(this.consumeTotalDentroMinimo) || 0).toFixed(2)
+            },
+            consumoFueraFormateado() {
+                return (Number(this.consumeTotalFueraMinimo) || 0).toFixed(2)
+            },
+            /** Aviso rojo: el consumo aplicable al mínimo no alcanza el mínimo del club. */
+            aplicaConsumoMinimo() {
+                if (!this.partner) return false
+                const min = parseFloat(this.consumedMin || 0)
+                if (!(min > 0)) return false
+                return this.consumoDentroParaAlerta < min - 1e-6
+            },
+            /**
+             * Base de consumo a cobrar al salir: si lo aplicable al mínimo &lt; mínimo → mínimo + fuera de mínimo;
+             * si no → total del ticket (dentro + fuera).
+             */
+            montoBaseConsumoVisita() {
+                const min = parseFloat(this.consumedMin || 0)
+                if (!this.partner) return 0
+                if (this.consumeBreakdownLoaded) {
+                    const dentro = this.consumeTotalDentroMinimo
+                    const fuera = this.consumeTotalFueraMinimo
+                    const ticket = this.consumeTotalTicket
+                    if (dentro < min - 1e-6) return min + fuera
+                    return ticket
+                }
+                const t = parseFloat(this.partner.total || 0)
+                if (t < min - 1e-6) return min
+                return t
+            },
             montoAbonar() {
                 if (!this.partner) return 0
-                let total = (parseFloat(this.partner.total) < parseFloat(this.consumedMin)) ? this.consumedMin : this.partner.total
+                let total = this.montoBaseConsumoVisita
                 total += this.pendienteEntradaEfectivo
                 if(this.items.other_exit_paid) total +=  parseFloat(this.items.other_exit_paid)
                 if(this.methods.length > 0){
@@ -533,6 +593,43 @@ import eventBus from '../../event-bus'
                 // La información de la visita debería estar disponible en el objeto partner
                 // que se guarda desde activeVisits. Si no está, se mostrará N/A en los campos.
                 // Este método puede ser usado para cargar datos adicionales si es necesario en el futuro.
+            },
+            /** Productos «fuera de mínimo»: prefijo en description o long_description (donde suelen cargarlo en catálogo). */
+            isProductoFueraConsumoMinimo(product) {
+                const prefixes = ['fuera de consumo minimo-', 'fuera de consumo mínimo-']
+                const match = (s) => {
+                    const t = String(s || '').trim().toLowerCase()
+                    return prefixes.some((pre) => t.startsWith(pre))
+                }
+                return match(product.description) || match(product.long_description)
+            },
+            fetchConsumeBreakdown() {
+                const id = this.partner && this.partner.id_bracelet_1
+                if (!id) {
+                    this.consumeBreakdownLoaded = false
+                    return
+                }
+                this.$http.get(process.env.VUE_APP_DEGIRA + 'consumptions/get/consume?id_bracelet=' + id)
+                    .then((res) => {
+                        const products = (res.data && res.data.data && res.data.data.products) ? res.data.data.products : []
+                        let totalTicket = 0
+                        let totalFuera = 0
+                        products.forEach((p) => {
+                            const q = parseInt(p.quantity || 0, 10)
+                            const line = parseFloat(p.price || 0) * q
+                            totalTicket += line
+                            if (this.isProductoFueraConsumoMinimo(p)) {
+                                totalFuera += line
+                            }
+                        })
+                        this.consumeTotalTicket = totalTicket
+                        this.consumeTotalFueraMinimo = totalFuera
+                        this.consumeTotalDentroMinimo = totalTicket - totalFuera
+                        this.consumeBreakdownLoaded = true
+                    })
+                    .catch(() => {
+                        this.consumeBreakdownLoaded = false
+                    })
             },
             formatDate(date, format){
                 if(date != null){ 
@@ -609,7 +706,8 @@ import eventBus from '../../event-bus'
 
                     let pay_method_percent = this.methods.find((item) => item.id_payment_method == this.selectPayMethod).percent
 
-                    let exit_amount_paid = (parseFloat(this.partner.total) < parseFloat(this.consumedMin)) ? parseFloat(this.consumedMin) * (parseFloat(pay_method_percent) + 1) : parseFloat(this.partner.total) * (parseFloat(pay_method_percent) +1)
+                    const baseConsumo = this.montoBaseConsumoVisita
+                    let exit_amount_paid = baseConsumo * (parseFloat(pay_method_percent) + 1)
 
                     const pendienteEntrada = this.pendienteEntradaEfectivo
                     exit_amount_paid += pendienteEntrada
@@ -621,9 +719,7 @@ import eventBus from '../../event-bus'
                         other_paid = 0
                     }
                     
-                    let debio_pagar_consumo = (parseFloat(this.partner.total) < parseFloat(this.consumedMin)) ? 
-                        parseFloat(this.consumedMin) * (parseFloat(pay_method_percent)  + 1)  : 
-                        parseFloat(this.partner.total) * (parseFloat(pay_method_percent)  + 1) 
+                    let debio_pagar_consumo = baseConsumo * (parseFloat(pay_method_percent) + 1) 
 
                     let debio_pagar_other_exit_paid = (this.items.other_exit_paid) ? parseFloat(this.items.other_exit_paid) *
                         (parseFloat(pay_method_percent) + 1) : 0
