@@ -193,55 +193,40 @@
       </v-col>
     </v-row>
 
-    <!-- Cambiar tipo de visita (incl. salir de MENSUAL) -->
-    <v-dialog
-      v-model="dialogVisitType"
-      max-width="480px"
-      persistent
-      :retain-focus="false"
-      content-class="dialog-visit-type-root"
-    >
-      <v-card class="dialog-visit-type-card">
+    <!-- Cambiar tipo de visita (incl. salir de MENSUAL) — mismo v-select que el filtro «Tipo de Visita» -->
+    <v-dialog v-model="dialogVisitType" max-width="480px" persistent :retain-focus="false">
+      <v-card>
         <v-card-title class="headline orange--text">
           Cambiar tipo de visita
         </v-card-title>
-        <v-card-text v-if="partnerVisitType" class="dialog-visit-type-text">
+        <v-card-text v-if="partnerVisitType">
           <p class="text-body-2 mb-2">
             <strong>{{ partnerVisitType.alias }}</strong>
             — actual: {{ partnerVisitType.visit_type?.description || 'N/A' }}
           </p>
           <p class="text-caption grey--text mb-3">
-            Para asignar <strong>MENSUAL</strong> use la pantalla «Esquema de pago mensual». Si pasaba de MENSUAL a otro tipo, se limpian vencimiento y montos del esquema en el socio.
+            MENSUAL solo desde «Esquema de pago mensual». Al pasar de MENSUAL a otro tipo se limpian vencimiento y montos del esquema.
           </p>
-          <label class="visit-type-native-label text-body-2 grey--text text--darken-1" for="visit-type-select-native">
-            Nuevo tipo
-          </label>
-          <!-- select nativo: v-select dentro de v-dialog falla en Vuetify 2 (menú no abre / queda detrás) -->
-          <select
-            id="visit-type-select-native"
-            v-model.number="selectedVisitTypeId"
-            class="visit-type-native-select"
-            aria-label="Nuevo tipo de visita"
-          >
-            <option
-              v-for="t in visitTypesForChange"
-              :key="t.id_visit_type"
-              :value="Number(t.id_visit_type)"
-            >
-              {{ t.description }}
-            </option>
-          </select>
-          <p v-if="partnerVisitType && visitTypesForChange.length === 0" class="text-caption red--text mt-2">
-            No hay tipos de visita cargados. Actualice la página o revise la conexión.
-          </p>
-          <p v-else-if="partnerVisitType && !canSubmitVisitType && selectedVisitTypeId != null" class="text-caption orange--text mt-2">
-            Elegí un tipo <strong>distinto</strong> al actual para poder guardar.
-          </p>
+          <v-select
+            v-model="selectedVisitTypeId"
+            :items="visitTypesForChange"
+            item-text="description"
+            item-value="id_visit_type"
+            label="Nuevo tipo"
+            outlined
+            dense
+          ></v-select>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="dialogVisitType = false">Cancelar</v-btn>
-          <v-btn color="orange" dark :loading="savingVisitType" :disabled="!canSubmitVisitType" @click="submitVisitTypeChange">
+          <v-btn
+            color="orange"
+            dark
+            :loading="savingVisitType"
+            :disabled="selectedVisitTypeId == null || savingVisitType"
+            @click="submitVisitTypeChange"
+          >
             Guardar
           </v-btn>
         </v-card-actions>
@@ -333,23 +318,6 @@ export default {
       const list = this.visitTypes || [];
       return list.filter((v) => (v.description || '').toUpperCase().trim() !== 'MENSUAL');
     },
-    /** id_visit_type_usualy a veces viene solo en visit_type (grilla). */
-    currentPartnerVisitTypeId() {
-      if (!this.partnerVisitType) return null;
-      const p = this.partnerVisitType;
-      const raw = p.id_visit_type_usualy != null && p.id_visit_type_usualy !== ''
-        ? p.id_visit_type_usualy
-        : (p.visit_type && p.visit_type.id_visit_type != null ? p.visit_type.id_visit_type : null);
-      if (raw == null || raw === '') return null;
-      const n = Number(raw);
-      return Number.isNaN(n) ? null : n;
-    },
-    canSubmitVisitType() {
-      if (this.selectedVisitTypeId == null || !this.partnerVisitType) return false;
-      const cur = this.currentPartnerVisitTypeId;
-      if (cur == null) return true;
-      return Number(this.selectedVisitTypeId) !== cur;
-    },
   },
   methods: {
     getBody() {
@@ -367,10 +335,9 @@ export default {
         : (item.visit_type && item.visit_type.id_visit_type != null ? item.visit_type.id_visit_type : null);
       const cur = curRaw != null && curRaw !== '' ? Number(curRaw) : null;
       const num = (id) => Number(id);
-      /** Preferir un tipo distinto al actual para que «Guardar» no quede bloqueado al abrir. */
-      const other = opts.find((o) => cur == null || num(o.id_visit_type) !== cur);
-      if (other) {
-        this.selectedVisitTypeId = num(other.id_visit_type);
+      const inList = cur != null && opts.some((o) => num(o.id_visit_type) === cur);
+      if (inList) {
+        this.selectedVisitTypeId = cur;
       } else if (opts.length > 0) {
         this.selectedVisitTypeId = num(opts[0].id_visit_type);
       } else {
@@ -379,7 +346,7 @@ export default {
       this.dialogVisitType = true;
     },
     async submitVisitTypeChange() {
-      if (!this.canSubmitVisitType || !this.partnerVisitType) return;
+      if (this.selectedVisitTypeId == null || !this.partnerVisitType) return;
       this.savingVisitType = true;
       try {
         const base = process.env.VUE_APP_DEGIRA || '';
@@ -581,49 +548,6 @@ export default {
   font-size: 0.5rem;
   line-height: 1.1;
   color: #666;
-}
-
-/* Diálogo + select: sin esto el combo no abre o el listado queda invisible detrás del modal */
-.dialog-visit-type-text {
-  overflow: visible !important;
-}
-.dialog-visit-type-card {
-  overflow: visible !important;
-}
-
-.visit-type-native-label {
-  display: block;
-  margin-bottom: 6px;
-}
-.visit-type-native-select {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  font-size: 1rem;
-  line-height: 1.4;
-  border: 1px solid rgba(0, 0, 0, 0.38);
-  border-radius: 4px;
-  background-color: #fff;
-  color: rgba(0, 0, 0, 0.87);
-  cursor: pointer;
-}
-.visit-type-native-select:focus {
-  outline: none;
-  border-color: #fb8c00;
-  box-shadow: 0 0 0 2px rgba(251, 140, 0, 0.25);
-}
-.theme--dark .visit-type-native-select {
-  background-color: #1e1e1e;
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.38);
-}
-</style>
-
-<style>
-.dialog-visit-type-root {
-  overflow: visible !important;
 }
 </style>
 
