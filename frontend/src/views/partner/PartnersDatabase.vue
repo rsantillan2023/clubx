@@ -216,6 +216,12 @@
             outlined
             dense
           ></v-select>
+          <p v-if="partnerVisitType && visitTypesForChange.length === 0" class="text-caption red--text mt-2">
+            No hay tipos de visita cargados. Actualice la página o revise la conexión.
+          </p>
+          <p v-else-if="partnerVisitType && !canSubmitVisitType && selectedVisitTypeId != null" class="text-caption orange--text mt-2">
+            Elegí un tipo <strong>distinto</strong> al actual para poder guardar.
+          </p>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -310,11 +316,24 @@ export default {
   computed: {
     visitTypesForChange() {
       const list = this.visitTypes || [];
-      return list.filter((v) => (v.description || '').toUpperCase() !== 'MENSUAL');
+      return list.filter((v) => (v.description || '').toUpperCase().trim() !== 'MENSUAL');
+    },
+    /** id_visit_type_usualy a veces viene solo en visit_type (grilla). */
+    currentPartnerVisitTypeId() {
+      if (!this.partnerVisitType) return null;
+      const p = this.partnerVisitType;
+      const raw = p.id_visit_type_usualy != null && p.id_visit_type_usualy !== ''
+        ? p.id_visit_type_usualy
+        : (p.visit_type && p.visit_type.id_visit_type != null ? p.visit_type.id_visit_type : null);
+      if (raw == null || raw === '') return null;
+      const n = Number(raw);
+      return Number.isNaN(n) ? null : n;
     },
     canSubmitVisitType() {
       if (this.selectedVisitTypeId == null || !this.partnerVisitType) return false;
-      return Number(this.selectedVisitTypeId) !== Number(this.partnerVisitType.id_visit_type_usualy);
+      const cur = this.currentPartnerVisitTypeId;
+      if (cur == null) return true;
+      return Number(this.selectedVisitTypeId) !== cur;
     },
   },
   methods: {
@@ -328,13 +347,20 @@ export default {
     openVisitTypeDialog(item) {
       this.partnerVisitType = item;
       const opts = this.visitTypesForChange;
-      const cur = item.id_visit_type_usualy;
-      const stillValid = opts.some((o) => Number(o.id_visit_type) === Number(cur));
-      this.selectedVisitTypeId = stillValid
-        ? Number(cur)
-        : opts.length > 0
-          ? Number(opts[0].id_visit_type)
-          : null;
+      const curRaw = item.id_visit_type_usualy != null && item.id_visit_type_usualy !== ''
+        ? item.id_visit_type_usualy
+        : (item.visit_type && item.visit_type.id_visit_type != null ? item.visit_type.id_visit_type : null);
+      const cur = curRaw != null && curRaw !== '' ? Number(curRaw) : null;
+      const num = (id) => Number(id);
+      /** Preferir un tipo distinto al actual para que «Guardar» no quede bloqueado al abrir. */
+      const other = opts.find((o) => cur == null || num(o.id_visit_type) !== cur);
+      if (other) {
+        this.selectedVisitTypeId = num(other.id_visit_type);
+      } else if (opts.length > 0) {
+        this.selectedVisitTypeId = num(opts[0].id_visit_type);
+      } else {
+        this.selectedVisitTypeId = null;
+      }
       this.dialogVisitType = true;
     },
     async submitVisitTypeChange() {
@@ -346,7 +372,7 @@ export default {
           `${base}partners/${this.partnerVisitType.id_partner}/visit-type`,
           {
             ...this.getBody(),
-            id_visit_type_usualy: this.selectedVisitTypeId,
+            id_visit_type_usualy: Number(this.selectedVisitTypeId),
           }
         );
         this.$store.commit('showSnackbar', {
