@@ -19,6 +19,7 @@ import {
   getMensualVisitTypeId,
   mensualSchemePayment,
   partnerAnotarNoPago,
+  partnerChangeVisitTypeFromDatabase,
 } from './helpers';
 
 
@@ -459,6 +460,33 @@ export const patchPartnerNoPagaController = async (req: Request, res: Response) 
     }
     const response = await partnerAnotarNoPago(
       id_partner_num,
+      Number(id_user),
+      Array.isArray(roles) ? roles : [],
+    );
+    responseHandler(response, res);
+  } catch (error: any) {
+    const { code = 400, message = 'Error Desconocido' } = error as IErrorResponse;
+    res.status(code).send({ message });
+  }
+};
+
+export const patchPartnerVisitTypeController = async (req: Request, res: Response) => {
+  const {
+    params: { id_partner = '' },
+    body: { id_user = '', roles = [], id_visit_type_usualy: idVisitType = '' },
+  } = req;
+  try {
+    const id_partner_num = Number(id_partner);
+    const id_new = Number(idVisitType);
+    if (!id_partner_num || isNaN(id_partner_num)) {
+      return res.status(400).send({ message: 'id_partner inválido' });
+    }
+    if (!id_new || isNaN(id_new)) {
+      return res.status(400).send({ message: 'id_visit_type_usualy es requerido' });
+    }
+    const response = await partnerChangeVisitTypeFromDatabase(
+      id_partner_num,
+      id_new,
       Number(id_user),
       Array.isArray(roles) ? roles : [],
     );

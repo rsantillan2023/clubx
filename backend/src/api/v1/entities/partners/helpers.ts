@@ -1287,6 +1287,78 @@ export const partnerAnotarNoPago = async (
   return { partner: updated?.toJSON() };
 };
 
+/**
+ * Cambia el tipo de visita habitual desde Base de datos de socios.
+ * No permite asignar MENSUAL (usar Esquema de pago mensual).
+ * Si el socio era MENSUAL, limpia santion_date, suspension_reason y expultion_reason del workaround.
+ */
+export const partnerChangeVisitTypeFromDatabase = async (
+  id_partner: number,
+  id_new_visit_type: number,
+  id_user: number,
+  roles: number[],
+  transaction?: Transaction,
+) => {
+  const idMensual = await getMensualVisitTypeId(transaction);
+  if (idMensual != null && id_new_visit_type === idMensual) {
+    errorHandler(400, 'Para asignar el tipo MENSUAL use la pantalla Esquema de pago mensual');
+  }
+
+  const vt = await VisitType.findByPk(id_new_visit_type, { transaction });
+  if (!vt) errorHandler(400, 'El tipo de visita no existe');
+
+  const partner = await Partner.findByPk(id_partner, { transaction });
+  if (!partner) errorHandler(404, 'Socio no encontrado');
+  const json = (partner as NonNullable<typeof partner>).toJSON() as IPartner;
+  const wasMensual = idMensual != null && json.id_visit_type_usualy === idMensual;
+
+  if (json.id_visit_type_usualy === id_new_visit_type) {
+    const unchanged = await Partner.findByPk(id_partner, { transaction });
+    return { partnerUpdated: unchanged?.toJSON() };
+  }
+
+  const updatePayload: Record<string, unknown> = {
+    id_visit_type_usualy: id_new_visit_type,
+  };
+  if (wasMensual) {
+    updatePayload.santion_date = null;
+    updatePayload.suspension_reason = null;
+    updatePayload.expultion_reason = null;
+  }
+
+  await Partner.update(updatePayload, { where: { id_partner }, transaction });
+
+  const dayOfWeek = getVisitDate(new Date());
+  await Operation.create(
+    {
+      id_user,
+      id_partner,
+      id_operation_type: EOpertationType.MODIFICACION_SOCIO,
+      operation_log: JSON.stringify({
+        action: 'PARTNER_CHANGE_VISIT_TYPE_DB',
+        id_partner,
+        id_new_visit_type,
+        wasMensual,
+      }),
+      operation_metadata: JSON.stringify({
+        action: 'PARTNER_CHANGE_VISIT_TYPE_DB',
+        id_partner,
+        id_new_visit_type,
+        wasMensual,
+        operation_date: argentinianDate(new Date()),
+        id_role: roles,
+      }),
+      id_role: getFirstRoleId(roles),
+      operation_date: argentinianDate(new Date()),
+      id_day: dayOfWeek,
+    },
+    { transaction },
+  );
+
+  const updated = await Partner.findByPk(id_partner, { transaction });
+  return { partnerUpdated: updated?.toJSON() };
+};
+
 // Helper para obtener visitas históricas por fecha
 export const getHistoricalVisits = async (
   partnerParams: IPartnerParams,

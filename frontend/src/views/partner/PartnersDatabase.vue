@@ -147,6 +147,19 @@
                   </v-btn>
                   <span class="action-label">Edit</span>
                 </div>
+                <div class="action-btn-block">
+                  <v-btn
+                    color="primary"
+                    dark
+                    icon
+                    x-small
+                    class="ma-1"
+                    @click="openVisitTypeDialog(item)"
+                  >
+                    <v-icon small>mdi-account-switch</v-icon>
+                  </v-btn>
+                  <span class="action-label">Tipo</span>
+                </div>
                 <div v-if="isNormalState(item) && !isPartnerInEstablishment(item)" class="action-btn-block">
                   <v-btn
                     color="orange"
@@ -179,6 +192,40 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Cambiar tipo de visita (incl. salir de MENSUAL) -->
+    <v-dialog v-model="dialogVisitType" max-width="480px" persistent>
+      <v-card>
+        <v-card-title class="headline orange--text">
+          Cambiar tipo de visita
+        </v-card-title>
+        <v-card-text v-if="partnerVisitType">
+          <p class="text-body-2 mb-2">
+            <strong>{{ partnerVisitType.alias }}</strong>
+            — actual: {{ partnerVisitType.visit_type?.description || 'N/A' }}
+          </p>
+          <p class="text-caption grey--text mb-3">
+            Para asignar <strong>MENSUAL</strong> use la pantalla «Esquema de pago mensual». Si pasaba de MENSUAL a otro tipo, se limpian vencimiento y montos del esquema en el socio.
+          </p>
+          <v-select
+            v-model="selectedVisitTypeId"
+            :items="visitTypesForChange"
+            item-text="description"
+            item-value="id_visit_type"
+            label="Nuevo tipo"
+            outlined
+            dense
+          ></v-select>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="dialogVisitType = false">Cancelar</v-btn>
+          <v-btn color="orange" dark :loading="savingVisitType" :disabled="!canSubmitVisitType" @click="submitVisitTypeChange">
+            Guardar
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Dialog para mostrar observaciones completas -->
     <v-dialog v-model="observationsDialog" max-width="600px">
@@ -222,6 +269,10 @@ export default {
       visitTypes: [],
       observationsDialog: false,
       selectedObservations: '',
+      dialogVisitType: false,
+      partnerVisitType: null,
+      selectedVisitTypeId: null,
+      savingVisitType: false,
       options: {
         page: 1,
         itemsPerPage: 100,
@@ -239,7 +290,7 @@ export default {
         { text: 'Tipo Visita', value: 'id_visit_type_usualy', sortable: true, width: '100px' },
         { text: 'Fecha Alta', value: 'partner_discharge_date', sortable: true, width: '100px' },
         { text: 'Observaciones', value: 'observations', sortable: false, width: '150px' },
-        { text: 'Acciones', value: 'actions', sortable: false, width: '220px', align: 'left' },
+        { text: 'Acciones', value: 'actions', sortable: false, width: '280px', align: 'left' },
       ],
     };
   },
@@ -256,7 +307,68 @@ export default {
       deep: true,
     },
   },
+  computed: {
+    visitTypesForChange() {
+      const list = this.visitTypes || [];
+      return list.filter((v) => (v.description || '').toUpperCase() !== 'MENSUAL');
+    },
+    canSubmitVisitType() {
+      if (this.selectedVisitTypeId == null || !this.partnerVisitType) return false;
+      return Number(this.selectedVisitTypeId) !== Number(this.partnerVisitType.id_visit_type_usualy);
+    },
+  },
   methods: {
+    getBody() {
+      const user = this.$store.state.userLoged && this.$store.state.userLoged.data;
+      return {
+        id_user: user ? user.id_user : '',
+        roles: user && user.roles ? user.roles : [],
+      };
+    },
+    openVisitTypeDialog(item) {
+      this.partnerVisitType = item;
+      const opts = this.visitTypesForChange;
+      const cur = item.id_visit_type_usualy;
+      const stillValid = opts.some((o) => Number(o.id_visit_type) === Number(cur));
+      this.selectedVisitTypeId = stillValid
+        ? Number(cur)
+        : opts.length > 0
+          ? Number(opts[0].id_visit_type)
+          : null;
+      this.dialogVisitType = true;
+    },
+    async submitVisitTypeChange() {
+      if (!this.canSubmitVisitType || !this.partnerVisitType) return;
+      this.savingVisitType = true;
+      try {
+        const base = process.env.VUE_APP_DEGIRA || '';
+        await this.$http.patch(
+          `${base}partners/${this.partnerVisitType.id_partner}/visit-type`,
+          {
+            ...this.getBody(),
+            id_visit_type_usualy: this.selectedVisitTypeId,
+          }
+        );
+        this.$store.commit('showSnackbar', {
+          text: 'Tipo de visita actualizado',
+          color: 'success',
+        });
+        this.dialogVisitType = false;
+        this.partnerVisitType = null;
+        await this.loadPartners();
+      } catch (error) {
+        console.error('Error al cambiar tipo de visita:', error);
+        const msg =
+          (error.response && error.response.data && error.response.data.message) ||
+          'No se pudo cambiar el tipo de visita';
+        this.$store.commit('showSnackbar', {
+          text: msg,
+          color: 'error',
+        });
+      } finally {
+        this.savingVisitType = false;
+      }
+    },
     async loadPartners() {
       this.loading = true;
       try {
