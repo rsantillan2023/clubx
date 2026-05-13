@@ -26,6 +26,14 @@
 
             <v-card no-gutters elevation="0" style="position: fixed; z-index: 100;" class="py-2 px-2 mt-n5 rounded-0 search-input-card">
 
+                <div v-if="salePartnerBanner" class="sale-partner-summary mb-2">
+                    <span class="sale-partner-summary-name sale-partner-summary-piece">{{ salePartnerBanner.name }}</span>
+                    <span class="sale-partner-summary-divider" aria-hidden="true">·</span>
+                    <span class="sale-partner-summary-card sale-partner-summary-piece sale-partner-summary-piece-noshrink">{{ salePartnerBanner.card }}</span>
+                    <span class="sale-partner-summary-divider" aria-hidden="true">·</span>
+                    <span class="sale-partner-summary-vt sale-partner-summary-piece">{{ salePartnerBanner.visitType || '—' }}</span>
+                </div>
+
                 <v-text-field
                     v-model="search"
                     append-icon="mdi-magnify"
@@ -38,7 +46,7 @@
             </v-card>
 
             <v-data-iterator
-                class="mt-10 px-2"
+                :class="saleProductsListClassMain"
                 :items="productos_disponibles"
                 hide-default-footer
                 disable-pagination
@@ -60,7 +68,7 @@
                 </template>
             </v-data-iterator>
 
-            <div v-else class="mt-10">
+            <div v-else :class="saleProductsListClassSection">
                 <v-row class="justify-center orange--text font-weight-bold my-2 text-body-2">
                     Productos destacados
                 </v-row>
@@ -127,7 +135,7 @@
 
         <v-col v-if="$vuetify.breakpoint.mdAndUp" cols="3" class="mt-12 px-2">
             <div class="consumos-panel">
-                <DetailConsumed :total="total" :consumos="consumos" @cancelOrder="cancel()"/>
+                <DetailConsumed :total="total" :consumos="consumos" :initial-id-bracelet="braceletFromRoute" :sale-banner="salePartnerBanner" @cancelOrder="cancel()"/>
             </div>
         </v-col>
 
@@ -152,9 +160,12 @@
       </v-row>
     </v-container>
 
-    <v-dialog v-model="modalDetail">
-        <v-card v-if="consumos.length">
-            <v-toolbar color="orange" class="rounded-b-0" dark elevation="0">
+    <v-dialog
+        v-model="modalDetail"
+        content-class="products-sale-detail-dialog-shell"
+    >
+        <v-card v-if="consumos.length" class="products-sale-modal-card d-flex flex-column">
+            <v-toolbar color="orange" class="rounded-b-0 flex-shrink-0" dark elevation="0">
                 <v-icon class="mx-1">mdi-receipt-text-outline</v-icon>
                 <span class="font-weight-bold">Detalle de Consumos</span>
                 <v-spacer></v-spacer>
@@ -162,15 +173,17 @@
                     <v-icon>mdi-close</v-icon>
                 </v-btn>
             </v-toolbar>
-            <div class="pa-5" style="max-height: 35rem; overflow-y: scroll;">
-                <DetailConsumed :total="total" :consumos="consumos" @cancelOrder="cancel()"/>
+            <div class="pa-4 pa-sm-5 consumos-modal-body flex-grow-1">
+                <DetailConsumed
+                    :total="total"
+                    :consumos="consumos"
+                    :initial-id-bracelet="braceletFromRoute"
+                    :sale-banner="salePartnerBanner"
+                    show-continue-shopping-in-actions
+                    @cancelOrder="cancel()"
+                    @continueShopping="modalDetail = false"
+                />
             </div>
-
-            <v-card-actions class="d-flex justify-center">
-                <v-btn small dark @click="modalDetail = false" color="orange">
-                    <v-icon>mdi-cart-arrow-down</v-icon>Seguir Agregando Productos
-                </v-btn>
-            </v-card-actions>
         </v-card>
     </v-dialog>
     
@@ -196,6 +209,44 @@
             }
         },
         computed:{
+            braceletFromRoute(){
+                const q = this.$route.query.id_bracelet
+                if (q == null || q === '') return null
+                const s = Array.isArray(q) ? q[0] : q
+                const t = String(s).trim()
+                return t !== '' ? t : null
+            },
+            salePartnerBanner() {
+                const pick = (key) => {
+                    const v = this.$route.query[key]
+                    if (v == null || v === '') return ''
+                    const raw = Array.isArray(v) ? v[0] : v
+                    return String(raw).trim()
+                }
+                const name = pick('sale_name')
+                const vt = pick('sale_visit_type')
+                const cardFromQuery = pick('sale_card_display')
+                const idPartner = pick('sale_id_partner')
+                const idVisit = pick('sale_id_visit')
+                const aliasCol = pick('sale_alias')
+                if (!name && !vt && !cardFromQuery && !idPartner && !idVisit && !aliasCol) return null
+                const cardShort =
+                    cardFromQuery || this.braceletDisplayShort(this.braceletFromRoute)
+                return {
+                    name: name || 'Socio',
+                    card: cardShort || '—',
+                    visitType: vt,
+                    idPartner: idPartner || '',
+                    idVisit: idVisit || '',
+                    alias: aliasCol || '',
+                }
+            },
+            saleProductsListClassMain() {
+                return this.salePartnerBanner ? 'sale-products-list-offset-banner px-2' : 'mt-10 px-2'
+            },
+            saleProductsListClassSection() {
+                return this.salePartnerBanner ? 'sale-products-list-offset-banner' : 'mt-10'
+            },
             productos_disponibles(){
                 return this.productos.filter((item) => item.available !== 0)
                     .sort((a, b) => {
@@ -238,10 +289,34 @@
                 return total
             }
         },
+        watch: {
+            modalDetail(val) {
+                this.updateConsumosModalBodyClass(val);
+            },
+            '$vuetify.breakpoint.smAndDown'() {
+                if (this.modalDetail) this.updateConsumosModalBodyClass(true);
+            },
+        },
         beforeMount(){
             this.getProducts()
         },
+        beforeDestroy() {
+            this.updateConsumosModalBodyClass(false);
+        },
         methods:{
+            updateConsumosModalBodyClass(open) {
+                if (typeof document === 'undefined') return;
+                document.body.classList.remove('products-sale-detail-modal-mobile');
+                if (open && this.$vuetify.breakpoint.smAndDown) {
+                    document.body.classList.add('products-sale-detail-modal-mobile');
+                }
+            },
+            braceletDisplayShort(full) {
+                if (full == null || full === '') return '';
+                const s = String(full).trim();
+                if (!s) return '';
+                return s.length > 3 ? s.slice(-3) : s;
+            },
             add(item){
                 let index = this.productos.indexOf(item)
                 this.productos[index].cantidad++
@@ -359,6 +434,109 @@
       /* El v-col de 9 columnas ocupa 75% del ancho, reducido un 20% */
       width: calc(60% - 16px) !important;
       left: 8px;
+    }
+  }
+
+  .sale-partner-summary {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .sale-partner-summary-piece {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sale-partner-summary-piece-noshrink {
+    flex-shrink: 0;
+  }
+
+  .sale-partner-summary-divider {
+    flex-shrink: 0;
+    opacity: 0.45;
+    font-weight: 700;
+    padding: 0 2px;
+  }
+
+  .sale-partner-summary-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: rgba(0, 0, 0, 0.87);
+    flex: 1 1 0;
+    text-align: right;
+  }
+
+  .sale-partner-summary-card {
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1.15;
+    color: #f57c00;
+    letter-spacing: 0.02em;
+  }
+
+  .sale-partner-summary-vt {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #039be5;
+    flex: 1 1 0;
+    text-align: left;
+  }
+
+  .sale-products-list-offset-banner {
+    margin-top: 10.5rem !important;
+  }
+
+  @media (min-width: 960px) {
+    .sale-products-list-offset-banner {
+      margin-top: 9rem !important;
+    }
+  }
+
+  .products-sale-modal-card {
+    overflow: hidden;
+  }
+
+  @media (max-width: 959px) {
+    body.products-sale-detail-modal-mobile .v-dialog__content {
+      align-items: flex-start !important;
+      justify-content: center !important;
+      padding-top: 10vh !important;
+      padding-left: 5vw !important;
+      padding-right: 5vw !important;
+    }
+
+    body.products-sale-detail-modal-mobile .products-sale-detail-dialog-shell {
+      width: 90% !important;
+      max-width: 90vw !important;
+      margin: 0 !important;
+      max-height: 90vh !important;
+      overflow: hidden !important;
+    }
+
+    body.products-sale-detail-modal-mobile .products-sale-modal-card {
+      max-height: 90vh !important;
+      min-height: 0 !important;
+    }
+  }
+
+  .consumos-modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0;
+  }
+
+  @media (min-width: 960px) {
+    .consumos-modal-body {
+      max-height: 35rem;
     }
   }
 </style>

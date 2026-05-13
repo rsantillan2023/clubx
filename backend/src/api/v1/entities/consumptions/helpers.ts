@@ -134,11 +134,33 @@ export const getConsumptionsByBracelet = async (
         });
 
 
+        const v0 = visits[0];
+        /** Datos de la visita activa: la pantalla de salida los espera en el mismo objeto que `partner`. */
+        const visitFieldsForPartner = v0
+            ? {
+                  hour_entry: v0.hour_entry,
+                  visit_date: v0.visit_date,
+                  id_day: v0.id_day,
+                  last_visit: v0.last_visit,
+                  entry_amount_paid: v0.entry_amount_paid,
+                  extra_entry: v0.extra_entry,
+                  extra_entry_obs: v0.extra_entry_obs,
+                  visit_amount_consumed: v0.visit_amount_consumed,
+                  exit_amount_payed: v0.exit_amount_payed,
+                  extra_exit: v0.extra_exit,
+                  extra_exit_obs: v0.extra_exit_obs,
+                  entry_visit_obs: v0.entry_visit_obs,
+                  other_visit_obs: v0.other_visit_obs,
+                  had_to_paid: v0.had_to_paid,
+              }
+            : {};
+
         const result = {
-            id_visit: visits[0]?.id_visit,
-            visit_type: visits[0]?.visit_type,
-            partner: visits[0]?.partner,
-            products
+            id_visit: v0?.id_visit,
+            visit_type: v0?.visit_type,
+            partner:
+                v0?.partner != null ? { ...v0.partner, ...visitFieldsForPartner } : v0?.partner,
+            products,
         };
 
         await transaction?.commit();

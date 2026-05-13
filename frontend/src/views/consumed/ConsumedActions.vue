@@ -1,10 +1,10 @@
 <template>
   <div class="consumed-actions-container">
     <v-row no-gutters class="px-md-15 px-3 mb-4">
-      <!-- Los 5 botones siempre en el mismo renglón, responsive -->
+      <!-- Botones principales en el mismo renglón (misma composición en móvil y escritorio) -->
       <v-col cols="12">
         <div class="buttons-container">
-          <!-- Botón 1: Ver consumos de otros socios -->
+          <!-- Botón 1: Ver consumos de otros socios → pantalla elegir socio (/verConsumos) -->
           <div class="button-wrapper">
             <v-btn 
               color="orange"
@@ -14,30 +14,14 @@
               :large="$vuetify.breakpoint.mdAndUp"
               elevation="2"
               :loading="load"
-              @click="$emit('clickVolver')"
+              @click="goToVerConsumosOtros"
               class="action-btn">
               <v-icon :left="$vuetify.breakpoint.mdAndUp" :size="$vuetify.breakpoint.xs || $vuetify.breakpoint.sm ? 14 : 20">mdi-magnify</v-icon>
               <span class="button-text">Ver consumos de otros socios</span>
             </v-btn>
           </div>
 
-          <!-- Botón 2: Ver Socios en el Club -->
-          <div class="button-wrapper">
-            <v-btn 
-              color="blue"
-              dark
-              block
-              :small="$vuetify.breakpoint.xs || $vuetify.breakpoint.sm"
-              :large="$vuetify.breakpoint.mdAndUp"
-              elevation="2"
-              @click="goToActiveVisits"
-              class="action-btn">
-              <v-icon :left="$vuetify.breakpoint.mdAndUp" :size="$vuetify.breakpoint.xs || $vuetify.breakpoint.sm ? 14 : 20">mdi-account-group</v-icon>
-              <span class="button-text">Ver Socios en el Club</span>
-            </v-btn>
-          </div>
-
-          <!-- Botón 3: Venta de Productos -->
+          <!-- Botón 2: Venta → elegir socio (/productsSalePickPartner) -->
           <div class="button-wrapper">
             <v-btn 
               color="green"
@@ -53,7 +37,7 @@
             </v-btn>
           </div>
 
-          <!-- Botón 4: Enviar WhatsApp -->
+          <!-- Botón 3: Enviar WhatsApp -->
           <div v-if="items.length > 0 && roles.includes(1)" class="button-wrapper">
             <SendWhatsappButton 
               :phoneNumber="partner && partner.partner_phone ? partner.partner_phone : ''" 
@@ -61,7 +45,7 @@
             </SendWhatsappButton>
           </div>
 
-          <!-- Botón 5: Cerrar Cuenta y Cobrar -->
+          <!-- Botón 4: Cerrar Cuenta y Cobrar -->
           <div v-if="items.length > 0 && HaveNoPayed && roles.includes(1)" class="button-wrapper">
             <v-btn 
               color="orange"
@@ -104,11 +88,12 @@ export default {
     goExit() {
       this.$emit('clickExit')
     },
-    goToActiveVisits() {
-      this.$router.push('/activeVisits')
+    goToVerConsumosOtros() {
+      this.$emit('clickVolver')
+      this.$router.push('/verConsumos')
     },
     goToProductsSale() {
-      this.$router.push('/productsSale')
+      this.$router.push('/productsSalePickPartner')
     },
     formatTotal(total) {
       if (!total && total !== 0) return '0'
@@ -131,6 +116,7 @@ export default {
   flex-wrap: nowrap;
   width: 100%;
   gap: 8px;
+  align-items: stretch;
 }
 
 .button-wrapper {
@@ -146,6 +132,7 @@ export default {
   white-space: normal;
   word-wrap: break-word;
   overflow: hidden;
+  height: 100%;
 }
 
 .action-btn:hover {
@@ -168,55 +155,42 @@ export default {
   overflow: hidden;
 }
 
-/* Ajustes responsive para mantener todos en un renglón */
-@media (max-width: 960px) {
-  .button-text {
-    font-size: 0.65rem;
+/* Móvil / tablet estrecha: dos botones por fila (misma fila = mismo renglón) */
+@media (max-width: 959px) {
+  .buttons-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    align-items: stretch;
+    width: 100%;
   }
-  
-  .action-btn {
-    min-height: 42px;
-    padding: 4px 6px;
-  }
-  
-  ::v-deep .whatsapp-btn {
-    min-height: 42px;
-    padding: 4px 6px;
-    font-size: 0.65rem;
-  }
-}
 
-@media (max-width: 600px) {
-  .button-text {
-    font-size: 0.55rem;
+  .button-wrapper {
+    flex: unset;
+    width: auto;
+    min-width: 0;
+    max-width: none;
   }
-  
-  .action-btn {
-    min-height: 38px;
-    padding: 2px 4px;
-  }
-  
-  ::v-deep .whatsapp-btn {
-    min-height: 38px;
-    padding: 2px 4px;
-    font-size: 0.55rem;
-  }
-}
 
-@media (max-width: 400px) {
+  /* Si queda un botón solo en la última fila, ocupar todo el ancho */
+  .button-wrapper:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
   .button-text {
-    font-size: 0.5rem;
+    font-size: 0.92rem;
+    line-height: 1.25;
   }
-  
+
   .action-btn {
-    min-height: 36px;
-    padding: 2px 3px;
+    min-height: 48px;
+    padding: 10px 14px !important;
   }
-  
+
   ::v-deep .whatsapp-btn {
-    min-height: 36px;
-    padding: 2px 3px;
-    font-size: 0.5rem;
+    min-height: 48px;
+    padding: 10px 14px !important;
+    font-size: 0.92rem !important;
   }
 }
 </style>

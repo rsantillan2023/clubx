@@ -23,19 +23,24 @@
             </v-row>
         </v-card>
 
-        <v-autocomplete
-            label="Nro de Tarjeta"
-            :items="items"
-            dense
-            outlined
-            :menu-props="{maxHeight:200, offsetY: true}"
-            v-model="id_bracelet"
-            item-text="option"
-            item-value="id_bracelet"
-            :rules="[(v) => !!v || 'Indique el socio']"
-            class="mb-2"
-            hide-details="auto"
-        ></v-autocomplete>
+        <div class="detail-bracelet-section">
+            <div class="detail-bracelet-gap-row" aria-hidden="true"></div>
+            <v-autocomplete
+                ref="braazalete"
+                label="Socio"
+                :items="items"
+                dense
+                outlined
+                :menu-props="{ maxHeight: 320, offsetY: true }"
+                v-model="id_bracelet"
+                item-text="option"
+                item-value="id_bracelet"
+                :rules="[(v) => !!v || 'Indique el socio']"
+                class="detail-bracelet-autocomplete"
+                hide-details="auto"
+            ></v-autocomplete>
+            <div class="detail-bracelet-gap-row" aria-hidden="true"></div>
+        </div>
 
         <v-textarea
             label="Observaciones"
@@ -53,53 +58,52 @@
             :disabled="(id_bracelet == null)" 
             :loading="loading" 
             @click="send"
-            class="mb-2">
+            class="detail-btn-confirm">
              <v-icon left small>mdi-receipt-text-plus</v-icon> Confirmar Venta
         </v-btn>
 
-        <v-btn 
-            outlined 
-            color="orange" 
-            block 
-            @click="dialogConfirm = true" 
-            :disabled="loading"
-            small>
-                <v-icon left small>mdi-cancel</v-icon> Cancelar
-        </v-btn>
-
-        <div class="mt-4"></div>
-
-        <v-btn 
-            outlined 
-            color="orange" 
-            block 
-            @click="goToConsumed" 
-            :disabled="loading"
-            small
-            class="mb-2">
-                <v-icon left small>mdi-receipt-text</v-icon> Ver Consumos de Socios
-        </v-btn>
-
-        <v-btn 
-            outlined 
-            color="orange" 
-            block 
-            @click="goToConsumedByBracelet" 
-            :disabled="loading || !id_bracelet"
-            small
-            class="mb-2">
-                <v-icon left small>mdi-receipt-text-outline</v-icon> Ver Consumos de Este Socio
-        </v-btn>
-
-        <v-btn 
-            outlined 
-            color="orange" 
-            block 
-            @click="goToActiveVisits" 
-            :disabled="loading"
-            small>
-                <v-icon left small>mdi-account-group</v-icon> Ver Socios en el Club
-        </v-btn>
+        <div class="detail-secondary-actions">
+            <v-row dense no-gutters class="detail-four-actions-row">
+                <v-col cols="6" class="detail-action-col">
+                    <v-btn 
+                        outlined 
+                        color="orange" 
+                        block 
+                        @click="dialogConfirm = true" 
+                        :disabled="loading"
+                        small
+                        class="detail-secondary-action-btn">
+                        <v-icon small class="detail-action-btn-icon">mdi-cart-arrow-right</v-icon>
+                        <span class="detail-action-btn-label">Iniciar otra venta</span>
+                    </v-btn>
+                </v-col>
+                <v-col cols="6" class="detail-action-col">
+                    <v-btn 
+                        v-if="showContinueShoppingInActions"
+                        dark 
+                        color="orange" 
+                        block 
+                        small
+                        class="detail-secondary-action-btn detail-continue-sale-btn"
+                        @click="$emit('continueShopping')">
+                        <v-icon small class="detail-action-btn-icon">mdi-cart-arrow-down</v-icon>
+                        <span class="detail-action-btn-label">Seguir vendiendo a este socio</span>
+                    </v-btn>
+                    <v-btn 
+                        v-else
+                        outlined 
+                        color="orange" 
+                        block 
+                        @click="goToConsumed" 
+                        :disabled="loading"
+                        small
+                        class="detail-secondary-action-btn">
+                        <v-icon small class="detail-action-btn-icon">mdi-receipt-text</v-icon>
+                        <span class="detail-action-btn-label">Ver Consumos de Socios</span>
+                    </v-btn>
+                </v-col>
+            </v-row>
+        </div>
         
         <v-dialog 
           v-model="dialogConfirm" max-width="500px">
@@ -114,8 +118,8 @@
                   </v-btn>
               </v-card-title>
 
-                <div class="text-center py-5">
-                    <span style="font-size: 1rem">¿Está seguro que desea cancelar la orden?</span>
+                <div class="text-center py-5 px-4">
+                    <span style="font-size: 1rem">Va a iniciar otra venta. Se perderán los datos cargados en esta venta (productos en el carrito y observaciones). ¿Desea continuar?</span>
                 </div>
 
               <v-card-actions>
@@ -132,7 +136,7 @@
                         dark 
                         color="orange" 
                         elevation="0" 
-                        @click="cancel">SI, Cancelar
+                        @click="confirmStartAnotherSale">Sí, iniciar otra venta
                     </v-btn>
               </v-card-actions>
             </v-card>
@@ -146,7 +150,20 @@
     export default{
         props: {
             consumos: {type: Array},
-            total: {}
+            total: {},
+            initialIdBracelet: {
+                type: [String, Number],
+                default: null,
+            },
+            saleBanner: {
+                type: Object,
+                default: null,
+            },
+            /** Solo en modal móvil de venta: botón derecho «Seguir vendiendo…» cierra el modal (emit continueShopping). */
+            showContinueShoppingInActions: {
+                type: Boolean,
+                default: false,
+            },
         },
         data(){
             return{
@@ -164,6 +181,11 @@
             })
             this.getVisits()
         },
+        watch: {
+            initialIdBracelet() {
+                this.applyPresetBracelet()
+            },
+        },
         methods:{
             formatNumber(num) {
                 if (!num && num !== 0) return '0';
@@ -172,9 +194,49 @@
                     maximumFractionDigits: 2
                 });
             },
+            formatBracelet(bracelet) {
+                if (bracelet == null || bracelet === '') return '—';
+                const braceletStr = String(bracelet);
+                return braceletStr.length > 3 ? braceletStr.slice(-3) : braceletStr;
+            },
+            formatAlias(alias) {
+                if (!alias) return '';
+                return String(alias).replace(/---/g, ' ');
+            },
+            /** Columna 1 de la tabla «Cargar consumos» (Alias). */
+            pickTableCampo1Alias(item) {
+                const raw = item.partner && item.partner.alias;
+                const a = this.formatAlias(raw);
+                const t = (a && a.trim()) ? a.trim() : '';
+                return t !== '' ? t : '—';
+            },
+            visitTypeDescription(item) {
+                const vt = item.visit_type;
+                if (!vt) return '—';
+                if (Array.isArray(vt)) {
+                    const first = vt[0];
+                    return first && first.description ? String(first.description).trim() : '—';
+                }
+                return vt.description ? String(vt.description).trim() : '—';
+            },
+            /** Columnas 1, 4 y 5 de la tabla «Cargar consumos»: Alias · Tipo visita · Tarjeta. */
+            braceletOptionLabel(item, idBracelet) {
+                const c1 = this.pickTableCampo1Alias(item);
+                const c4 = this.visitTypeDescription(item);
+                const c5 = this.formatBracelet(idBracelet);
+                return `${c1} · ${c4} · Tarj. ${c5}`;
+            },
+            optionLabelFromBanner(braceletKey) {
+                const b = this.saleBanner;
+                const key = braceletKey != null ? String(braceletKey).trim() : '';
+                if (!b) return key ? `Tarjeta ${key}` : '—';
+                const c1 = (b.alias && String(b.alias).trim()) || '—';
+                const c4 = (b.visitType && String(b.visitType).trim()) || '—';
+                const card = (b.card && String(b.card).trim()) || this.formatBracelet(key);
+                return `${c1} · ${c4} · Tarj. ${card}`;
+            },
             getVisits() {
             let vm = this
-            this.load = true
 
             // El endpoint ahora devuelve { data: rows, totalCount: count } directamente
             this.$http.get(process.env.VUE_APP_DEGIRA+"partners/inside?sortBy=id_bracelet_1&sortDesc=false")
@@ -184,19 +246,17 @@
                 // response.data.data es un array de visitas directamente
                 response.data.data.map((item) => {
                     if (item.id_bracelet_1 && item.partner && item.partner.partner_name) {
-                        let obj = {
+                        vm.items.push({
                             id_bracelet : item.id_bracelet_1,
-                            option : item.partner.partner_name + " (" + item.id_bracelet_1+")"
-                        }
-                        vm.items.push(obj)
+                            option : vm.braceletOptionLabel(item, item.id_bracelet_1),
+                        })
                     }
-                    
+
                     if (item.id_bracelet_2 && item.partner && item.partner.affiliate_name){
-                        let obj2 = {
+                        vm.items.push({
                             id_bracelet : item.id_bracelet_2,
-                            option : item.partner.affiliate_name + " (" + item.id_bracelet_2+")"
-                        }
-                        vm.items.push(obj2)
+                            option : vm.braceletOptionLabel(item, item.id_bracelet_2),
+                        })
                     }
 
                     return item
@@ -205,15 +265,29 @@
               } else {
                 console.warn('No se recibieron datos del endpoint');
               }
-              vm.load = false
+              vm.applyPresetBracelet()
             })
             .catch((error) => {
               console.error('Error al cargar brazaletes:', error);
               console.error('Error response:', error.response);
-              vm.load = false
             })
 
       },
+            applyPresetBracelet() {
+                const preset = this.initialIdBracelet
+                if (preset == null || preset === '') return
+                const key = String(preset).trim()
+                if (!key) return
+                let match = this.items.find((i) => String(i.id_bracelet) === key)
+                if (!match) {
+                    match = {
+                        id_bracelet: key,
+                        option: this.optionLabelFromBanner(key),
+                    }
+                    this.items.unshift(match)
+                }
+                this.id_bracelet = match.id_bracelet
+            },
             textWhatsapp(data){
                 let text = '_Hola '+ data.partner_name+'_' + '! Realizaste el siguiente consumo '
                 text += '*Brazalete Nº ' + data.id_bracelet +':* '
@@ -228,19 +302,23 @@
 
             cancel(){
                 this.$emit('cancelOrder');
-                this.$refs.braazalete.reset() 
+                if (this.$refs.braazalete && typeof this.$refs.braazalete.reset === 'function') {
+                    this.$refs.braazalete.reset()
+                }
                 this.dialogConfirm=false;
+            },
+            confirmStartAnotherSale(){
+                this.$emit('cancelOrder');
+                if (this.$refs.braazalete && typeof this.$refs.braazalete.reset === 'function') {
+                    this.$refs.braazalete.reset()
+                }
+                this.observations = '';
+                this.id_bracelet = null;
+                this.dialogConfirm = false;
+                this.$router.push('/productsSalePickPartner');
             },
             goToConsumed(){
                 this.$router.push('/consumed');
-            },
-            goToConsumedByBracelet(){
-                if(this.id_bracelet){
-                    this.$router.push(`/consumed?id_bracelet=${this.id_bracelet}`);
-                }
-            },
-            goToActiveVisits(){
-                this.$router.push('/activeVisits');
             },
             send(){
                 // Validar que id_bracelet no sea null o undefined
@@ -269,9 +347,7 @@
                                             phoneNumber: response.data.data.partner_phone
                                         },
                                         closeDialog: true,
-                                        goTo: { title: 'Ver consumos',
-                                                route: '/consumed?id_bracelet='+ response.data.data.id_bracelet,
-                                        },
+                                        continueSellingRoute: '/productsSalePickPartner',
                                         isHtml: true,
                                         text: [ {label: '', 
                                                  value: response.data.data.products, 
@@ -307,6 +383,135 @@
 .detail-consumed-container {
     width: 100%;
     max-width: 100%;
+}
+
+.detail-bracelet-section {
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.detail-bracelet-gap-row {
+    height: 14px;
+}
+
+.detail-bracelet-autocomplete {
+    margin-bottom: 0 !important;
+}
+
+.detail-bracelet-autocomplete ::v-deep .v-select__selections {
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+    max-width: 100%;
+}
+
+.detail-bracelet-autocomplete ::v-deep .v-select__selection,
+.detail-bracelet-autocomplete ::v-deep .v-select__selection--comma {
+    font-size: 1.125rem !important;
+    font-weight: 700 !important;
+    white-space: normal !important;
+    line-height: 1.25 !important;
+}
+
+.detail-bracelet-autocomplete ::v-deep input {
+    font-size: 1.125rem !important;
+    font-weight: 700 !important;
+}
+
+.detail-bracelet-autocomplete ::v-deep .v-list-item .v-list-item__title {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    white-space: normal !important;
+    line-height: 1.25 !important;
+}
+
+.detail-btn-confirm {
+    margin-bottom: 0;
+}
+
+@media (max-width: 959px) {
+    .detail-btn-confirm.v-btn {
+        min-height: 54px !important;
+        padding-top: 14px !important;
+        padding-bottom: 14px !important;
+        font-weight: 700 !important;
+    }
+}
+
+.detail-secondary-actions {
+    margin-top: 22px;
+}
+
+@media (min-width: 960px) {
+    .detail-secondary-actions {
+        margin-top: 16px;
+    }
+}
+
+.detail-four-actions-row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+.detail-action-col {
+    padding: 4px !important;
+    min-width: 0;
+}
+
+.detail-secondary-action-btn {
+    height: auto !important;
+    white-space: normal !important;
+    min-height: 76px !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.detail-secondary-action-btn ::v-deep .v-btn__content {
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    white-space: normal !important;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    align-self: stretch;
+}
+
+.detail-action-btn-icon {
+    flex-shrink: 0;
+    margin-right: 0 !important;
+    margin-bottom: 6px !important;
+}
+
+.detail-action-btn-label {
+    font-size: 0.62rem !important;
+    font-weight: 700 !important;
+    line-height: 1.15;
+    text-align: center;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 2px;
+}
+
+@media (min-width: 600px) {
+    .detail-action-btn-label {
+        font-size: 0.68rem !important;
+    }
+}
+
+@media (min-width: 960px) {
+    .detail-secondary-action-btn {
+        min-height: 84px !important;
+    }
+
+    .detail-action-btn-label {
+        font-size: 0.74rem !important;
+    }
 }
 
 .consumos-card {
@@ -382,7 +587,7 @@
 }
 
 .detail-consumed-container ::v-deep .v-autocomplete__menu {
-    max-height: 200px !important;
+    max-height: 320px !important;
 }
 
 /* Responsive para pantallas pequeñas */

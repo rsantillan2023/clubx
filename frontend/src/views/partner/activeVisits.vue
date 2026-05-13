@@ -12,40 +12,66 @@
                     >
                         <div 
                             class="stat-item"
+                            :class="{ 'stat-item--details-open': isStatDetailsExpanded(stat.id_visit_type) }"
                             :style="'background: linear-gradient(135deg, ' + stat.color + '15 0%, ' + stat.color + '08 100%); border-left: 4px solid ' + stat.color"
                         >
-                            <div class="stat-label" :style="{ color: stat.color }">
-                                {{ stat.description }}
+                            <div
+                                class="stat-item-summary d-flex align-center justify-space-between w-100 px-2"
+                                role="button"
+                                tabindex="0"
+                                :aria-expanded="isStatDetailsExpanded(stat.id_visit_type)"
+                                aria-label="Ver montos detallados"
+                                @click="toggleStatDetailsExpand(stat.id_visit_type)"
+                                @keydown.enter.prevent="toggleStatDetailsExpand(stat.id_visit_type)"
+                                @keydown.space.prevent="toggleStatDetailsExpand(stat.id_visit_type)"
+                            >
+                                <div class="flex-grow-1 text-center">
+                                    <div class="stat-label" :style="{ color: stat.color }">
+                                        {{ stat.description }}
+                                    </div>
+                                    <div class="stat-value stat-value-compact" :style="{ color: stat.color }">
+                                        {{ stat.count }}
+                                    </div>
+                                </div>
+                                <v-icon
+                                    small
+                                    class="flex-shrink-0 ml-1"
+                                    :style="{ color: stat.color }"
+                                >
+                                    {{ isStatDetailsExpanded(stat.id_visit_type) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+                                </v-icon>
                             </div>
-                            <div class="stat-value" :style="{ color: stat.color }">
-                                {{ stat.count }}
-                            </div>
-                            <div class="stat-details">
-                                <div class="stat-detail-row">
-                                    <span class="stat-detail-label">Entrada:</span>
-                                    <span class="stat-detail-value green--text">${{ formatNumber(stat.entry_amount_paid) }}</span>
+                            <v-expand-transition>
+                                <div
+                                    v-show="isStatDetailsExpanded(stat.id_visit_type)"
+                                    class="stat-details w-100 px-2"
+                                >
+                                    <div class="stat-detail-row">
+                                        <span class="stat-detail-label">Entrada:</span>
+                                        <span class="stat-detail-value green--text">${{ formatNumber(stat.entry_amount_paid) }}</span>
+                                    </div>
+                                    <div class="stat-detail-row">
+                                        <span class="stat-detail-label">Extra Ent:</span>
+                                        <span class="stat-detail-value orange--text">${{ formatNumber(stat.extra_entry) }}</span>
+                                    </div>
+                                    <div class="stat-detail-row">
+                                        <span class="stat-detail-label">Consumos:</span>
+                                        <span class="stat-detail-value blue--text">${{ formatNumber(stat.visit_amount_consumed) }}</span>
+                                    </div>
+                                    <div class="stat-detail-row">
+                                        <span class="stat-detail-label">Salida:</span>
+                                        <span class="stat-detail-value purple--text">${{ formatNumber(stat.exit_amount_payed) }}</span>
+                                    </div>
+                                    <div class="stat-detail-row">
+                                        <span class="stat-detail-label">Extra Sal:</span>
+                                        <span class="stat-detail-value orange--text">${{ formatNumber(stat.extra_exit) }}</span>
+                                    </div>
+                                    <div class="stat-detail-row total-row">
+                                        <span class="stat-detail-label font-weight-bold">Total:</span>
+                                        <span class="stat-detail-value font-weight-bold" :style="{ color: stat.color }">${{ formatNumber(stat.total) }}</span>
+                                    </div>
                                 </div>
-                                <div class="stat-detail-row">
-                                    <span class="stat-detail-label">Extra Ent:</span>
-                                    <span class="stat-detail-value orange--text">${{ formatNumber(stat.extra_entry) }}</span>
-                                </div>
-                                <div class="stat-detail-row">
-                                    <span class="stat-detail-label">Consumos:</span>
-                                    <span class="stat-detail-value blue--text">${{ formatNumber(stat.visit_amount_consumed) }}</span>
-                                </div>
-                                <div class="stat-detail-row">
-                                    <span class="stat-detail-label">Salida:</span>
-                                    <span class="stat-detail-value purple--text">${{ formatNumber(stat.exit_amount_payed) }}</span>
-                                </div>
-                                <div class="stat-detail-row">
-                                    <span class="stat-detail-label">Extra Sal:</span>
-                                    <span class="stat-detail-value orange--text">${{ formatNumber(stat.extra_exit) }}</span>
-                                </div>
-                                <div class="stat-detail-row total-row">
-                                    <span class="stat-detail-label font-weight-bold">Total:</span>
-                                    <span class="stat-detail-value font-weight-bold" :style="{ color: stat.color }">${{ formatNumber(stat.total) }}</span>
-                                </div>
-                            </div>
+                            </v-expand-transition>
                         </div>
                     </v-col>
                     <!-- Total general -->
@@ -56,40 +82,62 @@
                     >
                         <div 
                             class="stat-item total-stat"
+                            :class="{ 'stat-item--details-open': isStatDetailsExpanded(expandTotalStatKey) }"
                             style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-left: 4px solid #FF6F00;"
                         >
-                            <div class="stat-label white--text">
-                                TOTAL
+                            <div
+                                class="stat-item-summary d-flex align-center justify-space-between w-100 px-2 white--text"
+                                role="button"
+                                tabindex="0"
+                                :aria-expanded="isStatDetailsExpanded(expandTotalStatKey)"
+                                aria-label="Ver montos totales detallados"
+                                @click="toggleStatDetailsExpand(expandTotalStatKey)"
+                                @keydown.enter.prevent="toggleStatDetailsExpand(expandTotalStatKey)"
+                                @keydown.space.prevent="toggleStatDetailsExpand(expandTotalStatKey)"
+                            >
+                                <div class="flex-grow-1 text-center">
+                                    <div class="stat-label white--text">
+                                        TOTAL
+                                    </div>
+                                    <div class="stat-value stat-value-compact white--text">
+                                        {{ totalCount }}
+                                    </div>
+                                </div>
+                                <v-icon small class="flex-shrink-0 ml-1 white--text">
+                                    {{ isStatDetailsExpanded(expandTotalStatKey) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+                                </v-icon>
                             </div>
-                            <div class="stat-value white--text">
-                                {{ totalCount }}
-                            </div>
-                            <div class="stat-details">
-                                <div class="stat-detail-row">
-                                    <span class="stat-detail-label white--text">Entrada:</span>
-                                    <span class="stat-detail-value white--text">${{ formatNumber(totalEntryAmount) }}</span>
+                            <v-expand-transition>
+                                <div
+                                    v-show="isStatDetailsExpanded(expandTotalStatKey)"
+                                    class="stat-details stat-details--inverse w-100 px-2"
+                                >
+                                    <div class="stat-detail-row">
+                                        <span class="stat-detail-label white--text">Entrada:</span>
+                                        <span class="stat-detail-value white--text">${{ formatNumber(totalEntryAmount) }}</span>
+                                    </div>
+                                    <div class="stat-detail-row">
+                                        <span class="stat-detail-label white--text">Extra Ent:</span>
+                                        <span class="stat-detail-value white--text">${{ formatNumber(totalExtraEntry) }}</span>
+                                    </div>
+                                    <div class="stat-detail-row">
+                                        <span class="stat-detail-label white--text">Consumos:</span>
+                                        <span class="stat-detail-value white--text">${{ formatNumber(totalConsumos) }}</span>
+                                    </div>
+                                    <div class="stat-detail-row">
+                                        <span class="stat-detail-label white--text">Salida:</span>
+                                        <span class="stat-detail-value white--text">${{ formatNumber(totalExitAmount) }}</span>
+                                    </div>
+                                    <div class="stat-detail-row">
+                                        <span class="stat-detail-label white--text">Extra Sal:</span>
+                                        <span class="stat-detail-value white--text">${{ formatNumber(totalExtraExit) }}</span>
+                                    </div>
+                                    <div class="stat-detail-row total-row">
+                                        <span class="stat-detail-label white--text font-weight-bold">Total:</span>
+                                        <span class="stat-detail-value white--text font-weight-bold">${{ formatNumber(totalAmount) }}</span>
+                                    </div>
                                 </div>
-                                <div class="stat-detail-row">
-                                    <span class="stat-detail-label white--text">Extra Ent:</span>
-                                    <span class="stat-detail-value white--text">${{ formatNumber(totalExtraEntry) }}</span>
-                                </div>
-                                <div class="stat-detail-row">
-                                    <span class="stat-detail-label white--text">Consumos:</span>
-                                    <span class="stat-detail-value white--text">${{ formatNumber(totalConsumos) }}</span>
-                                </div>
-                                <div class="stat-detail-row">
-                                    <span class="stat-detail-label white--text">Salida:</span>
-                                    <span class="stat-detail-value white--text">${{ formatNumber(totalExitAmount) }}</span>
-                                </div>
-                                <div class="stat-detail-row">
-                                    <span class="stat-detail-label white--text">Extra Sal:</span>
-                                    <span class="stat-detail-value white--text">${{ formatNumber(totalExtraExit) }}</span>
-                                </div>
-                                <div class="stat-detail-row total-row">
-                                    <span class="stat-detail-label white--text font-weight-bold">Total:</span>
-                                    <span class="stat-detail-value white--text font-weight-bold">${{ formatNumber(totalAmount) }}</span>
-                                </div>
-                            </div>
+                            </v-expand-transition>
                         </div>
                     </v-col>
                 </v-row>
@@ -352,6 +400,8 @@
         selectedVisits: [],
         loadingMassiveExit: false,
         massiveExitDialog: false,
+        statDetailsExpandedKeys: {},
+        expandTotalStatKey: '__TOTAL__',
      
     }),
 
@@ -548,6 +598,13 @@
           maximumFractionDigits: 0
         });
       },
+      toggleStatDetailsExpand(key) {
+        const k = String(key);
+        this.$set(this.statDetailsExpandedKeys, k, !this.statDetailsExpandedKeys[k]);
+      },
+      isStatDetailsExpanded(key) {
+        return !!this.statDetailsExpandedKeys[String(key)];
+      },
       getVisitTypeColor(id) {
         const colors = {
           1: '#4CAF50', // verde
@@ -716,15 +773,40 @@
 
 .stat-item {
   width: 100%;
-  padding: 16px 12px;
+  padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
   text-align: center;
-  min-height: 240px;
   transition: opacity 0.2s;
   border-right: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.stat-item--details-open {
+  min-height: 220px;
+}
+
+.stat-item-summary {
+  cursor: pointer;
+  user-select: none;
+  min-height: 44px;
+}
+
+.stat-value-compact.stat-value {
+  margin-bottom: 0;
+}
+
+.stat-item-summary .stat-label {
+  margin-bottom: 4px;
+}
+
+.stat-details.stat-details--inverse {
+  border-top-color: rgba(255, 255, 255, 0.35);
+}
+
+.stat-details.stat-details--inverse .stat-detail-row.total-row {
+  border-top-color: rgba(255, 255, 255, 0.45);
 }
 
 .stat-item:last-child {
@@ -798,8 +880,11 @@
 /* Responsive para indicadores */
 @media (max-width: 600px) {
   .stat-item {
-    padding: 12px 8px;
-    min-height: 220px;
+    padding: 8px;
+  }
+
+  .stat-item--details-open {
+    min-height: 200px;
   }
   
   .stat-value {

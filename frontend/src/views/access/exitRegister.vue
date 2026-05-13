@@ -1,58 +1,36 @@
 <template>
     <div class="exit-register-container">
-        <!-- Header con título y botones de navegación -->
+        <!-- Header -->
         <v-row no-gutters class="mb-4">
             <v-col cols="12">
                 <v-card class="header-card" elevation="2">
-                    <v-card-title class="d-flex justify-space-between align-center pa-4">
-                        <div class="d-flex align-center">
-                            <v-icon color="orange" large class="mr-3">mdi-exit-run</v-icon>
-                            <div>
-                                <h2 class="mb-0 orange--text font-weight-bold">Registro de Salida</h2>
-                                <div class="text-caption grey--text mb-1">
-                                    Complete los datos para registrar la salida del socio
-                                </div>
-                                <ul
-                                    v-if="consumeBreakdownLoaded && partner"
-                                    class="red--text font-weight-medium text-body-2 pl-4 mb-1 mt-1"
-                                    style="list-style-type: disc;">
-                                    <li class="mb-0">
-                                        Consumo de descartables por: <strong>${{ consumoFueraFormateado }}</strong>
-                                    </li>
-                                </ul>
-                                <ul 
-                                    v-if="partner && aplicaConsumoMinimo" 
-                                    class="red--text font-weight-medium text-body-2 pl-4 mb-0"
-                                    style="list-style-type: disc;">
-                                    <li v-if="consumeBreakdownLoaded" class="mb-1">
-                                        Consumo que cuenta para el mínimo: <strong>${{ consumoDentroFormateado }}</strong>.
-                                        El mínimo del club es <strong>${{ consumedMin }}</strong>.
-                                    </li>
-                                    <li v-else class="mb-1">
-                                        Consumo registrado en ticket: <strong>${{ totalConsumoMostrado }}</strong>; el consumo mínimo es <strong>${{ consumedMin }}</strong>.
-                                    </li>
-                                </ul>
+                    <v-card-title class="flex-column align-stretch pa-4">
+                        <div class="d-flex align-center justify-space-between w-100 flex-nowrap">
+                            <div class="d-flex align-center min-width-0 pr-2 flex-grow-1">
+                                <v-icon color="orange" large class="mr-3 flex-shrink-0">mdi-exit-run</v-icon>
+                                <h2 class="mb-0 orange--text font-weight-bold text-truncate">
+                                    Registro de Salida
+                                </h2>
+                            </div>
+                            <div
+                                v-if="partner"
+                                class="exit-header-monto-abonar orange--text font-weight-black text-end flex-shrink-0 align-self-center"
+                            >
+                                ${{ montoAbonarFormateado }}
                             </div>
                         </div>
-                        <div class="d-flex flex-wrap">
-                            <v-btn 
-                                small 
-                                outlined 
-                                color="orange" 
-                                class="mr-2 mb-2"
-                                @click="$router.push('/activeVisits')">
-                                <v-icon left small>mdi-arrow-left</v-icon>
-                                Visitas Activas
-                            </v-btn>
-                            <v-btn 
-                                small 
-                                outlined 
-                                color="orange" 
-                                class="mb-2"
-                                @click="$router.push('/access')">
-                                <v-icon left small>mdi-qrcode-scan</v-icon>
-                                Acceso
-                            </v-btn>
+                        <div
+                            v-if="partner"
+                            class="w-100 d-flex justify-end mt-1"
+                        >
+                            <span class="exit-header-monto-abonar-leyenda blue--text text--darken-2 font-weight-bold">
+                                Monto a abonar
+                            </span>
+                        </div>
+                        <div class="w-100 mt-2">
+                            <div v-if="$vuetify.breakpoint.mdAndUp" class="text-caption grey--text mb-1">
+                                Complete los datos para registrar la salida del socio
+                            </div>
                         </div>
                     </v-card-title>
                 </v-card>
@@ -60,98 +38,153 @@
         </v-row>
 
         <v-row no-gutters v-if="partner">
-            <!-- Información Principal del Socio -->
-            <v-col cols="12" md="8" class="pr-md-2">
-                <!-- Card de Identificación -->
-                <v-card class="mb-4" elevation="2" outlined>
-                    <v-card-title class="orange white--text pa-3">
-                        <v-icon left>mdi-account-circle</v-icon>
-                        Información del Socio
-                    </v-card-title>
-                    <v-card-text class="pa-4">
-                        <v-row>
-                            <v-col cols="12" class="pb-2">
-                                <div class="d-flex align-center flex-wrap">
-                                    <span class="text-h5 orange--text font-weight-bold text-uppercase mr-3">
-                                        {{formatAlias(partner.alias)}}
-                                    </span>
-                                    <span class="text-body-2 grey--text mr-3 d-flex align-center">
-                                        <v-chip small color="orange" text-color="white">
-                                            {{partner.id_bracelet_1}}
-                                        </v-chip>
-                                    </span>
-                                    <v-chip color="orange" text-color="white" class="mr-3">
-                                        <v-icon left small>mdi-tag</v-icon>
-                                        {{partner.visit_type?.description || 'Tipo de Visita'}}
-                                    </v-chip>
-                                    <span class="text-body-1 grey--text mr-3">
-                                        {{partner.partner_name}}
-                                    </span>
-                                    <v-chip 
-                                        v-if="partner.state"
-                                        small 
-                                        :color="getStateColor(partner.state.id_state)" 
-                                        text-color="white" 
-                                        class="mr-3">
-                                        {{partner.state.description}}
-                                    </v-chip>
-                                </div>
-                            </v-col>
-                        </v-row>
-                    </v-card-text>
-                </v-card>
+            <!-- Socio + indicadores -->
+            <v-col cols="12">
+                <!-- Socio: una fila — nombre a la izquierda; tipo de visita y código a la derecha -->
+                <div class="exit-partner-strip mb-4 px-1">
+                    <div class="exit-partner-strip-inner d-flex flex-nowrap align-baseline justify-space-between">
+                        <span class="exit-partner-strip-name orange--text font-weight-bold text-uppercase">
+                            {{ exitPartnerPickerHeadTitle }}
+                        </span>
+                        <div class="exit-partner-strip-right d-flex flex-nowrap align-baseline justify-end text-end">
+                            <span class="exit-partner-strip-vtype light-blue--text text--darken-2 font-weight-bold">
+                                {{ partner.visit_type?.description || 'Tipo de Visita' }}
+                            </span>
+                            <span class="exit-partner-strip-sep grey--text" aria-hidden="true">·</span>
+                            <span class="exit-partner-strip-bracelet">
+                                {{ formatBracelet(partner.id_bracelet_1) }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
 
-                <!-- Card de Información de la Visita -->
-                <v-card class="mb-4" elevation="2" outlined>
+                <!-- Indicadores visita: una fila entre nombre y tarjeta detalle -->
+                <div class="exit-visit-indicators-row mb-3 px-1">
+                    <div class="exit-visit-indicators-inner d-flex flex-nowrap justify-space-between align-stretch">
+                        <div class="exit-visit-indicator">
+                            <v-icon color="orange" x-small class="mb-1">mdi-calendar</v-icon>
+                            <div class="exit-visit-indicator-label">Fecha entrada</div>
+                            <div class="exit-visit-indicator-value">
+                                {{ partner.visit_date ? formatDate(partner.visit_date, 'DD/MM/YYYY') : (partner.hour_entry ? formatDate(partner.hour_entry, 'DD/MM/YYYY') : 'N/A') }}
+                            </div>
+                        </div>
+                        <div class="exit-visit-indicator">
+                            <v-icon color="orange" x-small class="mb-1">mdi-clock-outline</v-icon>
+                            <div class="exit-visit-indicator-label">Hora</div>
+                            <div class="exit-visit-indicator-value">{{ formateHour(partner.hour_entry) || 'N/A' }}</div>
+                        </div>
+                        <div class="exit-visit-indicator">
+                            <v-icon color="orange" x-small class="mb-1">mdi-calendar-week</v-icon>
+                            <div class="exit-visit-indicator-label">Día</div>
+                            <div class="exit-visit-indicator-value">{{ formatDay(partner.id_day) || 'N/A' }}</div>
+                        </div>
+                        <div class="exit-visit-indicator">
+                            <v-icon color="orange" x-small class="mb-1">mdi-calendar-clock</v-icon>
+                            <div class="exit-visit-indicator-label">Últ. visita</div>
+                            <div class="exit-visit-indicator-value">{{ partner.last_visit ? formatDate(partner.last_visit, 'DD/MM/YYYY') : 'N/A' }}</div>
+                        </div>
+                    </div>
+                    <v-divider class="exit-visit-indicators-split"></v-divider>
+                    <div class="exit-visit-indicators-inner exit-visit-indicators-inner--entry d-flex flex-nowrap justify-space-between align-stretch">
+                        <div class="exit-visit-indicator">
+                            <v-icon color="green" x-small class="mb-1">mdi-cash-check</v-icon>
+                            <div class="exit-visit-indicator-label">Monto pagado entrada</div>
+                            <div class="exit-visit-indicator-value green--text">${{ partner.entry_amount_paid || 0 }}</div>
+                        </div>
+                        <div class="exit-visit-indicator">
+                            <v-icon color="green" x-small class="mb-1">mdi-cash-plus</v-icon>
+                            <div class="exit-visit-indicator-label">Extra pagado entrada</div>
+                            <div class="exit-visit-indicator-value green--text">${{ partner.extra_entry || 0 }}</div>
+                        </div>
+                        <div class="exit-visit-indicator exit-visit-indicator--notes">
+                            <v-icon color="green" x-small class="mb-1">mdi-note-text</v-icon>
+                            <div class="exit-visit-indicator-label">Obs. extra entrada</div>
+                            <div class="exit-visit-indicator-value exit-visit-indicator-notes-value text-body-2">
+                                {{ partner.extra_entry_obs || '—' }}
+                            </div>
+                        </div>
+                    </div>
+                    <v-divider class="exit-visit-indicators-split"></v-divider>
+                    <!-- Consumos / mínimo (lo más relevante de la pantalla) -->
+                    <div
+                        class="exit-visit-indicators-inner exit-visit-indicators-inner--consumos d-flex flex-nowrap justify-space-between align-stretch"
+                    >
+                        <div
+                            class="exit-visit-indicator exit-visit-indicator--consumo-main exit-visit-indicator--link"
+                            role="button"
+                            tabindex="0"
+                            :aria-disabled="!(partner && partner.id_bracelet_1)"
+                            aria-label="Ver consumos del socio"
+                            title="Ver consumos"
+                            @click="goToConsumedBracelet"
+                            @keydown.enter.prevent="goToConsumedBracelet"
+                            @keydown.space.prevent="goToConsumedBracelet"
+                        >
+                            <v-icon color="orange" small class="mb-1">mdi-cash</v-icon>
+                            <div class="exit-visit-indicator-label">Consumo actual</div>
+                            <div class="exit-visit-indicator-value orange--text font-weight-bold">${{ totalConsumoMostradoFormateado }}</div>
+                        </div>
+                        <div class="exit-visit-indicator exit-visit-indicator--consumo-main">
+                            <v-icon color="deep-orange" small class="mb-1">mdi-package-variant</v-icon>
+                            <div class="exit-visit-indicator-label">Descartables</div>
+                            <div class="exit-visit-indicator-value deep-orange--text font-weight-bold">
+                                <template v-if="consumeBreakdownLoaded">${{ consumoFueraMontoFormateado }}</template>
+                                <template v-else><span class="grey--text">…</span></template>
+                            </div>
+                        </div>
+                        <div
+                            class="exit-visit-indicator exit-visit-indicator--minimo-wrap"
+                            :class="{ 'exit-visit-indicator--minimo-alert': aplicaConsumoMinimo }"
+                        >
+                            <v-icon :color="aplicaConsumoMinimo ? 'error' : 'orange'" small class="mb-1">
+                                mdi-chart-box-outline
+                            </v-icon>
+                            <div class="exit-visit-indicator-label">Valor mínimo consumo</div>
+                            <div
+                                class="exit-visit-indicator-value font-weight-bold"
+                                :class="aplicaConsumoMinimo ? 'error--text' : 'orange--text'"
+                            >
+                                ${{ consumedMinFormateado }}
+                            </div>
+                        </div>
+                        <div
+                            class="exit-visit-indicator exit-visit-indicator--entrada-debe"
+                            :class="{ 'exit-visit-indicator--entrada-debe-alert': mostrarDebeEntradaEstacionamiento }"
+                        >
+                            <v-icon
+                                :color="mostrarDebeEntradaEstacionamiento ? 'error' : 'grey'"
+                                small
+                                class="mb-1"
+                            >
+                                mdi-cash-multiple
+                            </v-icon>
+                            <div class="exit-visit-indicator-label exit-visit-indicator-label--wrap">
+                                Debe entrada / estacionamiento
+                            </div>
+                            <div
+                                class="exit-visit-indicator-value font-weight-bold"
+                                :class="mostrarDebeEntradaEstacionamiento ? 'error--text' : 'grey--text'"
+                            >
+                                ${{ pendienteEntradaEfectivoFormateado }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card «Detalles de la Visita»: oculto temporalmente (reactivar con showDetallesVisitaCard) -->
+                <v-card
+                    v-if="showDetallesVisitaCard"
+                    class="mb-4"
+                    elevation="2"
+                    outlined
+                >
                     <v-card-title class="orange white--text pa-3">
                         <v-icon left>mdi-calendar-clock</v-icon>
                         Detalles de la Visita
                     </v-card-title>
                     <v-card-text class="pa-4">
-                        <!-- Una sola fila: Fechas, Día, Consumos (compacto) -->
-                        <v-row dense class="mb-0 align-center flex-nowrap" style="flex-wrap: nowrap; overflow-x: auto; justify-content: space-between;">
-                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
-                                <div class="text-center" style="min-width: 70px;">
-                                    <v-icon color="orange" x-small>mdi-calendar</v-icon>
-                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Fecha Entrada</div>
-                                    <div class="font-weight-bold text-caption" style="font-size: 0.7rem;">{{partner.visit_date ? formatDate(partner.visit_date, 'DD/MM/YYYY') : (partner.hour_entry ? formatDate(partner.hour_entry, 'DD/MM/YYYY') : 'N/A')}}</div>
-                                </div>
-                            </v-col>
-                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
-                                <div class="text-center" style="min-width: 55px;">
-                                    <v-icon color="orange" x-small>mdi-clock-outline</v-icon>
-                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Hora</div>
-                                    <div class="font-weight-bold text-caption" style="font-size: 0.7rem;">{{formateHour(partner.hour_entry) || 'N/A'}}</div>
-                                </div>
-                            </v-col>
-                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
-                                <div class="text-center" style="min-width: 60px;">
-                                    <v-icon color="orange" x-small>mdi-calendar-week</v-icon>
-                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Día</div>
-                                    <div class="font-weight-bold text-caption" style="font-size: 0.7rem;">{{formatDay(partner.id_day) || 'N/A'}}</div>
-                                </div>
-                            </v-col>
-                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
-                                <div class="text-center" style="min-width: 70px;">
-                                    <v-icon color="orange" x-small>mdi-calendar-clock</v-icon>
-                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Últ. Visita</div>
-                                    <div class="font-weight-bold text-caption" style="font-size: 0.7rem;">{{partner.last_visit ? formatDate(partner.last_visit, 'DD/MM/YYYY') : 'N/A'}}</div>
-                                </div>
-                            </v-col>
-                            <v-col cols="auto" class="pa-1 pr-2 flex-grow-0">
-                                <div class="text-center" style="min-width: 75px;">
-                                    <v-icon color="orange" x-small>mdi-cash</v-icon>
-                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Consumo Actual</div>
-                                    <div class="font-weight-bold orange--text text-caption" style="font-size: 0.7rem;">${{ totalConsumoMostrado }}</div>
-                                </div>
-                            </v-col>
-                            <v-col v-if="parseFloat(totalConsumoMostrado || 0) <= parseFloat(consumedMin || 0)" cols="auto" class="pa-1 pr-2 flex-grow-0">
-                                <div class="text-center" style="min-width: 75px;">
-                                    <v-icon color="orange" x-small>mdi-cash-multiple</v-icon>
-                                    <div class="text-caption grey--text" style="font-size: 0.65rem; line-height: 1.2;">Consumo Mín.</div>
-                                    <div class="font-weight-bold orange--text text-caption" style="font-size: 0.7rem;">${{ consumedMin }}</div>
-                                </div>
-                            </v-col>
+                        <!-- «Debe en consumos» (consumo actual / mínimo / descartables están en indicadores arriba) -->
+                        <v-row dense class="mb-0 align-center flex-nowrap justify-center" style="flex-wrap: nowrap; overflow-x: auto;">
                             <v-col cols="auto" class="pa-1 flex-grow-0">
                                 <div class="text-center" style="min-width: 75px;">
                                     <v-icon color="error" x-small>mdi-shopping</v-icon>
@@ -161,99 +194,67 @@
                             </v-col>
                         </v-row>
 
-                        <v-divider class="my-3"></v-divider>
-
-                        <!-- Tercera fila: Pagos de Entrada -->
-                        <v-row dense class="mb-2">
-                            <v-col cols="12">
-                                <div class="text-subtitle-2 orange--text mb-2">
-                                    <v-icon small left>mdi-login</v-icon>
-                                    Pagos de Entrada
-                                </div>
-                            </v-col>
-                            <v-col cols="6" md="4">
-                                <div class="text-center">
-                                    <v-icon color="green" class="mb-1">mdi-cash-check</v-icon>
-                                    <div class="text-caption grey--text">Monto Pagado Entrada</div>
-                                    <div class="font-weight-bold green--text">${{ partner.entry_amount_paid || 0 }}</div>
-                                </div>
-                            </v-col>
-                            <v-col cols="6" md="4">
-                                <div class="text-center">
-                                    <v-icon color="green" class="mb-1">mdi-cash-plus</v-icon>
-                                    <div class="text-caption grey--text">Extra Pagado Entrada</div>
-                                    <div class="font-weight-bold green--text">${{ partner.extra_entry || 0 }}</div>
-                                </div>
-                            </v-col>
-                            <v-col v-if="mostrarDebeEntradaEstacionamiento" cols="12" md="4">
-                                <div class="text-center pa-2">
-                                    <v-icon color="error" large class="mb-1">mdi-cash-multiple</v-icon>
-                                    <div class="text-body-2 error--text font-weight-medium">Debe de entrada y/o estacionamiento</div>
-                                    <div class="text-h5 font-weight-bold error--text mt-1">${{ pendienteEntradaEfectivo }}</div>
-                                </div>
-                            </v-col>
-                            <v-col cols="12" md="4" v-if="partner.extra_entry_obs">
-                                <div class="text-center">
-                                    <v-icon color="green" class="mb-1">mdi-note-text</v-icon>
-                                    <div class="text-caption grey--text">Obs. Extra Entrada</div>
-                                    <div class="font-weight-bold text-body-2">{{ partner.extra_entry_obs }}</div>
-                                </div>
-                            </v-col>
-                        </v-row>
-
                     </v-card-text>
                 </v-card>
             </v-col>
 
-            <!-- Sección de Cobro -->
-            <v-col cols="12" md="4" class="pl-md-2">
+            <!-- Registro de Cobro — fila aparte debajo de los indicadores -->
+            <v-col cols="12" class="exit-register-cobro-wrap px-1">
                 <v-card class="payment-card" elevation="2" outlined>
                     <v-card-title class="orange white--text pa-3">
                         <v-icon left>mdi-cash-register</v-icon>
                         Registro de Cobro
                     </v-card-title>
                     <v-card-text class="pa-4">
-                        <v-row no-gutters v-if="selectPayMethod != 5">
-                            <v-col cols="12" class="mb-3">
-                                <v-select 
-                                    v-model="selectPayMethod"
-                                    :items="methods"
-                                    label="Método de pago"
-                                    :rules='[(v) => !!v || "El metodo de pago es requerido"]'
-                                    dense
-                                    outlined
-                                    prepend-inner-icon="mdi-credit-card"
-                                    item-text="description"
-                                    item-value="id_payment_method"
-                                    hide-details
-                                ></v-select>  
-                            </v-col>
-                        </v-row>
+                        <div v-if="methods.length" class="exit-pay-methods-wrap mb-3">
+                            <div class="text-caption grey--text mb-2 font-weight-medium">Método de pago</div>
+                            <div class="exit-pay-methods-toggle d-flex flex-nowrap">
+                                <v-btn
+                                    v-for="m in methods"
+                                    :key="m.id_payment_method"
+                                    depressed
+                                    type="button"
+                                    class="exit-pay-method-btn text-none"
+                                    :color="selectPayMethod === m.id_payment_method ? 'orange' : undefined"
+                                    :dark="selectPayMethod === m.id_payment_method"
+                                    :outlined="selectPayMethod !== m.id_payment_method"
+                                    @click="selectPayMethod = m.id_payment_method"
+                                >
+                                    <span class="exit-pay-method-btn-text">{{ m.description }}</span>
+                                </v-btn>
+                            </div>
+                        </div>
 
                         <v-divider class="my-3" v-if="selectPayMethod"></v-divider>
 
-                        <v-card 
-                            v-if="selectPayMethod" 
-                            color="orange" 
-                            dark 
-                            class="mb-3 text-center pa-4"
-                            elevation="3">
-                            <div class="text-caption mb-1">El Socio debe abonar</div>
-                            <div class="text-h4 font-weight-bold">$ {{montoAbonar}}</div>
-                        </v-card>
-
-                        <v-btn 
+                        <div
                             v-if="selectPayMethod"
-                            :loading="loading" 
-                            color="orange" 
-                            large
-                            dark 
-                            block
-                            class="font-weight-bold mb-3"
-                            @click="showConfirmDialog">
-                            <v-icon left>mdi-exit-run</v-icon>
-                            Registrar Salida
-                        </v-btn>
+                            class="exit-registrar-actions mb-3"
+                        >
+                            <v-btn 
+                                :loading="loading" 
+                                color="red" 
+                                large
+                                dark 
+                                class="font-weight-bold exit-registrar-actions__primary"
+                                @click="showConfirmDialog">
+                                <v-icon left>mdi-exit-run</v-icon>
+                                Registrar Salida
+                            </v-btn>
+                            <v-btn
+                                large
+                                outlined
+                                color="deep-orange darken-2"
+                                class="font-weight-bold exit-registrar-actions__secondary text-none"
+                                @click="openNoPagaObservadoDialog"
+                            >
+                                <v-icon left color="deep-orange darken-2">mdi-account-alert</v-icon>
+                                <span class="exit-registrar-no-paga-label text-center">
+                                    <span class="d-block">No paga</span>
+                                    <span class="d-block text-caption font-weight-medium">Marcar como observado</span>
+                                </span>
+                            </v-btn>
+                        </div>
 
                         <v-divider class="my-3" v-if="selectPayMethod"></v-divider>
 
@@ -307,6 +308,52 @@
             </v-col>
         </v-row>
 
+        <v-dialog v-model="noPagaObservadoDialog" max-width="520" persistent scrollable>
+            <v-card>
+                <v-card-title class="deep-orange darken-2 white--text py-3">
+                    <v-icon left color="white">mdi-account-alert</v-icon>
+                    No paga / marcar como observado
+                </v-card-title>
+                <v-card-text class="pt-4">
+                    <p v-if="partner" class="text-body-2 mb-3 orange--text font-weight-medium">
+                        {{ exitPartnerPickerHeadTitle }}
+                    </p>
+                    <v-alert dense outlined type="info" class="mb-4 text-caption">
+                        Se guardará el <strong>estado</strong> y las <strong>observaciones</strong> del socio, y después se <strong>anotará NO_PAGO</strong> en su ficha (mismo uso que Esquema mensual).
+                    </v-alert>
+                    <v-select
+                        v-model="modalPartnerSelectedState"
+                        :items="modalPartnerStates"
+                        label="Estado del socio"
+                        item-text="description"
+                        item-value="id_state"
+                        outlined
+                        dense
+                        :loading="modalPartnerStatesLoading"
+                        :menu-props="{ offsetY: true, maxHeight: 280 }"
+                    />
+                    <v-textarea
+                        v-model="modalPartnerObservations"
+                        label="Observaciones del socio"
+                        rows="4"
+                        outlined
+                        dense
+                        hide-details="auto"
+                    />
+                </v-card-text>
+                <v-card-actions class="pb-4 px-4">
+                    <v-spacer></v-spacer>
+                    <v-btn text color="grey" @click="noPagaObservadoDialog = false" :disabled="modalPartnerSaving">
+                        Cancelar
+                    </v-btn>
+                    <v-btn color="deep-orange darken-2" dark :loading="modalPartnerSaving" @click="confirmNoPagaObservado">
+                        <v-icon left>mdi-content-save</v-icon>
+                        Guardar
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
         <!-- Diálogo de Confirmación -->
         <v-dialog v-model="confirmDialog" max-width="500" persistent>
             <v-card>
@@ -353,53 +400,6 @@
                 </v-card-actions>
             </v-card>
         </v-dialog>
-
-        <!-- Botones de Acción -->
-        <v-row no-gutters class="mt-4">
-            <v-col cols="12">
-                <v-card elevation="2" class="pa-4">
-                    <div class="d-flex flex-wrap justify-center align-center">
-                        <v-btn 
-                            v-if="partner && parseFloat(totalConsumoMostrado) > 0"
-                            large
-                            outlined
-                            color="orange" 
-                            class="mr-2 mb-2"
-                            @click="$router.push(`/consumed?id_bracelet=${partner.id_bracelet_1}`)">
-                            <v-icon left>mdi-eye</v-icon>
-                            Ver Consumos
-                        </v-btn>
-                        <v-btn 
-                            large
-                            outlined
-                            color="orange" 
-                            class="mr-2 mb-2"
-                            @click="$router.push('/productsSale')">
-                            <v-icon left>mdi-currency-usd</v-icon>
-                            Venta de Productos
-                        </v-btn>
-                        <v-btn 
-                            large
-                            outlined
-                            color="orange" 
-                            class="mr-2 mb-2"
-                            @click="$router.push('/lockers')">
-                            <v-icon left>mdi-hanger</v-icon>
-                            Guardarropas
-                        </v-btn>
-                        <v-btn 
-                            large
-                            outlined
-                            color="orange" 
-                            class="mr-2 mb-2"
-                            @click="$router.push('/devolution')">
-                            <v-icon left>mdi-undo</v-icon>
-                            Devoluciones
-                        </v-btn>
-                    </div>
-                </v-card>
-            </v-col>
-        </v-row>
     </div>
 </template>
 
@@ -429,10 +429,20 @@ import eventBus from '../../event-bus'
                 },
                 errorMessage: false,
                 confirmDialog: false,
+                noPagaObservadoDialog: false,
+                modalPartnerStates: [],
+                modalPartnerStatesLoading: false,
+                modalPartnerSaving: false,
+                modalPartnerSelectedState: 4,
+                modalPartnerObservations: '',
+                /** SOCIO_OBSERVADO (coincide con backend EPartnerState) */
+                SOCIO_OBSERVADO_ID: 4,
                 consumeBreakdownLoaded: false,
                 consumeTotalTicket: 0,
                 consumeTotalDentroMinimo: 0,
                 consumeTotalFueraMinimo: 0,
+                /** Pantalla en construcción: tarjeta «Detalles de la Visita» */
+                showDetallesVisitaCard: false,
                 
             }
         },
@@ -473,6 +483,15 @@ import eventBus from '../../event-bus'
             mostrarDebeEntradaEstacionamiento() {
                 return this.pendienteEntradaEfectivo > 1e-6
             },
+            /** Pendiente entrada ($) para indicadores */
+            pendienteEntradaEfectivoFormateado() {
+                const n = Number(this.pendienteEntradaEfectivo || 0)
+                if (Number.isNaN(n)) return '0,00'
+                return n.toLocaleString('es-AR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                })
+            },
             /** Total ticket (todos los productos); con desglose, coincide con la suma de get/consume. */
             totalConsumoMostrado() {
                 if (!this.partner) return 0
@@ -485,11 +504,31 @@ import eventBus from '../../event-bus'
                 if (this.consumeBreakdownLoaded) return this.consumeTotalDentroMinimo
                 return parseFloat(this.partner.total || 0)
             },
-            consumoDentroFormateado() {
-                return (Number(this.consumeTotalDentroMinimo) || 0).toFixed(2)
+            /** Descartables ($) para indicadores */
+            consumoFueraMontoFormateado() {
+                const n = Number(this.consumeTotalFueraMinimo || 0)
+                if (Number.isNaN(n)) return '0,00'
+                return n.toLocaleString('es-AR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                })
             },
-            consumoFueraFormateado() {
-                return (Number(this.consumeTotalFueraMinimo) || 0).toFixed(2)
+            /** Consumo actual ($) para indicadores */
+            totalConsumoMostradoFormateado() {
+                const n = Number(this.totalConsumoMostrado || 0)
+                if (Number.isNaN(n)) return '0,00'
+                return n.toLocaleString('es-AR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                })
+            },
+            consumedMinFormateado() {
+                const n = Number(this.consumedMin || 0)
+                if (Number.isNaN(n)) return '0,00'
+                return n.toLocaleString('es-AR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                })
             },
             /** Aviso rojo: el consumo aplicable al mínimo no alcanza el mínimo del club. */
             aplicaConsumoMinimo() {
@@ -528,6 +567,15 @@ import eventBus from '../../event-bus'
                 }
                 return total
             },
+            /** Monto total a cobrar formateado para el encabezado */
+            montoAbonarFormateado() {
+                const n = Number(this.montoAbonar)
+                if (Number.isNaN(n)) return '0,00'
+                return n.toLocaleString('es-AR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                })
+            },
             
             difference(){
                 let difference = this.montoAbonar
@@ -535,9 +583,24 @@ import eventBus from '../../event-bus'
                     difference = this.montoAbonar - this.items.exit_amount_paid
                 }
                 return difference
-            }
+            },
+            /** Misma lógica que el picker en «Ver consumos»: alias visible o nombre del socio */
+            exitPartnerPickerHeadTitle() {
+                if (!this.partner) return '—'
+                const aliasFmt = this.formatAlias(this.partner.alias)
+                if (aliasFmt && String(aliasFmt).trim() !== '') return aliasFmt
+                return this.partner.partner_name || '—'
+            },
         },
         methods:{
+            goToConsumedBracelet() {
+                const id = this.partner && this.partner.id_bracelet_1
+                if (id == null || String(id).trim() === '') return
+                this.$router.push({
+                    path: '/consumed',
+                    query: { id_bracelet: String(id) },
+                })
+            },
             getConsumedMin(){
                 let vm = this
                 this.$http.get(process.env.VUE_APP_DEGIRA+"consumptions/get/minimum")
@@ -566,20 +629,21 @@ import eventBus from '../../event-bus'
             
             getTipos(){
                 let vm = this
+                if (!vm.partner) return
                 this.$http.get(process.env.VUE_APP_DEGIRA+"visits_types/get")
                 .then((response)=>{
                     if(response){
+                        const usual = vm.partner.id_visit_type_usualy
                         vm.visits = response.data.data.filter((item) => {
-                            if(vm.partner.id_visit_type_usualy == 1 || vm.partner.id_visit_type_usualy == 4){
-                                if(item.id_visit_type == vm.partner.id_visit_type_usualy) return item
+                            if (usual == null || usual === '') return true
+                            if(usual == 1 || usual == 4){
+                                return item.id_visit_type == usual
                             }
-
-                            if(vm.partner.id_visit_type_usualy == 2){
-                                if([1,2,4].includes(item.id_visit_type)) return item
+                            if(usual == 2){
+                                return [1,2,4].includes(item.id_visit_type)
                             }
-
-                            if(vm.partner.id_visit_type_usualy == 3) return item
-
+                            if(usual == 3) return true
+                            return true
                         })
                         vm.selectVisit = vm.partner.id_visit_type_usualy
                     }
@@ -609,7 +673,11 @@ import eventBus from '../../event-bus'
                     this.consumeBreakdownLoaded = false
                     return
                 }
-                this.$http.get(process.env.VUE_APP_DEGIRA + 'consumptions/get/consume?id_bracelet=' + id)
+                this.$http.get(
+                    process.env.VUE_APP_DEGIRA +
+                        'consumptions/get/consume?id_bracelet=' +
+                        encodeURIComponent(String(id))
+                )
                     .then((res) => {
                         const products = (res.data && res.data.data && res.data.data.products) ? res.data.data.products : []
                         let totalTicket = 0
@@ -659,6 +727,12 @@ import eventBus from '../../event-bus'
                 if (!alias) return '';
                 return String(alias).replace(/---/g, ' ');
             },
+            /** Igual que ConsumedPickPartner: últimos dígitos del brazalete en la primera fila */
+            formatBracelet(bracelet) {
+                if (!bracelet) return '—'
+                const s = String(bracelet)
+                return s.length > 3 ? s.slice(-3) : s
+            },
             getStateColor(id_state){
                 const colors = {
                     1: 'green',    // Activo
@@ -674,6 +748,149 @@ import eventBus from '../../event-bus'
             },
             showConfirmDialog(){
                 this.confirmDialog = true
+            },
+            async openNoPagaObservadoDialog() {
+                if (!this.partner || !this.partner.id_partner) {
+                    eventBus.$emit('toast', {
+                        show: true,
+                        text: 'No hay datos del socio (id_partner) para actualizar.',
+                        color: 'warning',
+                    })
+                    return
+                }
+                this.modalPartnerObservations =
+                    this.partner.observations !== undefined && this.partner.observations !== null
+                        ? String(this.partner.observations)
+                        : ''
+                this.modalPartnerSelectedState = this.SOCIO_OBSERVADO_ID
+                this.noPagaObservadoDialog = true
+                await this.getModalPartnerStatesList()
+            },
+            async getModalPartnerStatesList() {
+                const base = process.env.VUE_APP_DEGIRA || ''
+                const url = `${String(base).replace(/\/?$/, '/')}states/get`
+                this.modalPartnerStatesLoading = true
+                try {
+                    const res = await this.$http.get(url)
+                    let raw = []
+                    const body = res && res.data ? res.data : null
+                    if (Array.isArray(body)) raw = body
+                    else if (body && Array.isArray(body.data)) raw = body.data
+                    else if (body && body.data != null && !Array.isArray(body.data))
+                        raw = [body.data]
+                    this.modalPartnerStates = raw
+                        .filter((x) => x && x.id_state != null)
+                        .map((s) => ({
+                            ...s,
+                            id_state: Number(s.id_state),
+                            description: s.description != null ? String(s.description) : '',
+                        }))
+                } catch (e) {
+                    console.error('exitRegister states/get:', e)
+                    this.modalPartnerStates = []
+                    eventBus.$emit('toast', {
+                        show: true,
+                        text: 'No se pudieron cargar los estados.',
+                        color: 'warning',
+                    })
+                } finally {
+                    this.modalPartnerStatesLoading = false
+                }
+            },
+            buildPartnerExitUpdatePayloadFromModal() {
+                const p = this.partner
+                const visitType = p.id_visit_type_usualy
+                return {
+                    alias: p.alias,
+                    partner_dni: p.partner_dni,
+                    partner_name: p.partner_name,
+                    partner_birthdate: p.partner_birthdate
+                        ? this.$moment(p.partner_birthdate, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY')
+                        : undefined,
+                    partner_phone: p.partner_phone || null,
+                    affiliate_dni: visitType === 2 ? p.affiliate_dni : undefined,
+                    affiliate_name: visitType === 2 ? p.affiliate_name : undefined,
+                    affiliate_birthdate:
+                        visitType === 2 && p.affiliate_birthdate
+                            ? this.$moment(p.affiliate_birthdate, 'YYYY-MM-DD HH:mm:ss').format(
+                                  'DD/MM/YYYY'
+                              )
+                            : undefined,
+                    affiliate_phone: visitType === 2 ? p.affiliate_phone : undefined,
+                    id_visit_type_usualy: visitType,
+                    id_state: Number(this.modalPartnerSelectedState),
+                    observations: this.modalPartnerObservations,
+                    suggest_membership_amount: p.suggest_membership_amount,
+                }
+            },
+            applyModalStateToPartner() {
+                const selected = this.modalPartnerStates.find(
+                    (s) => Number(s.id_state) === Number(this.modalPartnerSelectedState)
+                )
+                if (!selected) return
+                const idSt = Number(selected.id_state)
+                this.partner.id_state = idSt
+                const actions = selected.actions ||
+                    (this.partner.state && this.partner.state.actions) || { description: '', id_action: null }
+                this.partner.state = {
+                    id_state: idSt,
+                    description: selected.description,
+                    actions,
+                }
+            },
+            confirmNoPagaObservado() {
+                if (!this.partner || !this.partner.id_partner) return
+                if (this.modalPartnerSelectedState === null || this.modalPartnerSelectedState === '') {
+                    eventBus.$emit('toast', { show: true, text: 'Seleccione un estado.', color: 'warning' })
+                    return
+                }
+                const idPartner = Number(this.partner.id_partner)
+                if (!idPartner || Number.isNaN(idPartner)) {
+                    eventBus.$emit('toast', { show: true, text: 'id_partner inválido.', color: 'red' })
+                    return
+                }
+                const partnersRoot = process.env.VUE_APP_PARTNERS || ''
+                const patchUrl = `${String(partnersRoot).replace(/\/?$/, '/')}${idPartner}/no-paga`
+
+                this.modalPartnerSaving = true
+                const vm = this
+                const putData = this.buildPartnerExitUpdatePayloadFromModal()
+                this.$http
+                    .put(`${process.env.VUE_APP_PARTNERS_UPDATE}/${idPartner}`, putData)
+                    .then(() => vm.$http.patch(patchUrl, {}))
+                    .then((patchRes) => {
+                        vm.applyModalStateToPartner()
+                        vm.partner.observations = vm.modalPartnerObservations || ''
+                        const pack =
+                            patchRes &&
+                            patchRes.data &&
+                            patchRes.data.data &&
+                            patchRes.data.data.partner
+                                ? patchRes.data.data.partner
+                                : null
+                        if (pack && pack.observations != null) vm.partner.observations = pack.observations
+
+                        vm.$store.commit('setPartner', vm.partner)
+                        vm.noPagaObservadoDialog = false
+                        eventBus.$emit('toast', {
+                            show: true,
+                            text: 'Estado y observaciones guardados; anotado NO_PAGO.',
+                            color: 'success',
+                        })
+                        vm.modalPartnerSaving = false
+                    })
+                    .catch((err) => {
+                        console.log(err.response)
+                        eventBus.$emit('toast', {
+                            show: true,
+                            text:
+                                err.response && err.response.data && err.response.data.message
+                                    ? err.response.data.message
+                                    : 'No se pudo completar la acción',
+                            color: 'red',
+                        })
+                        vm.modalPartnerSaving = false
+                    })
             },
             confirmExit(){
                 this.confirmDialog = false
@@ -741,7 +958,7 @@ import eventBus from '../../event-bus'
                                 let dialog = { show: true, 
                                                 title: "Se ha realizado el egreso correctamente", 
                                                 type: 'success',
-                                                goTo: {title: 'Volver', icon: "mdi-arrow-left", route: '/activeVisits'},
+                                                goTo: {title: 'Volver', icon: "mdi-arrow-left", route: '/verConsumos'},
                                                 goToHome: false,
                                                 isHtml: true,
                                                 text: [ {label: 'Alias', 
@@ -818,6 +1035,19 @@ import eventBus from '../../event-bus'
     border-radius: 8px;
 }
 
+.exit-header-monto-abonar {
+    font-size: clamp(1.35rem, 4.8vw, 2rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+}
+
+.exit-header-monto-abonar-leyenda {
+    font-size: clamp(0.92rem, 3vw, 1.05rem);
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
 .info-card {
     border-radius: 4px;
     transition: box-shadow 0.2s;
@@ -868,6 +1098,12 @@ import eventBus from '../../event-bus'
     border-radius: 8px;
 }
 
+.exit-register-cobro-wrap {
+    margin-top: 12px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
 @media (max-width: 960px) {
     .payment-card {
         position: relative;
@@ -877,6 +1113,242 @@ import eventBus from '../../event-bus'
     .exit-register-container {
         padding: 8px;
     }
+}
+
+/* Bloque socio: nombre a la izquierda; tipo de visita · código agrupados a la derecha */
+.exit-partner-strip-inner {
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.exit-partner-strip-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: clamp(1.2rem, 5vw, 1.75rem);
+    line-height: 1.15;
+    text-align: left;
+}
+
+.exit-partner-strip-right {
+    flex: 0 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 10px;
+    text-align: right;
+}
+
+.exit-partner-strip-vtype {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: clamp(1.05rem, 4.2vw, 1.45rem);
+    line-height: 1.15;
+    text-align: right;
+}
+
+.exit-partner-strip-bracelet {
+    flex: 0 0 auto;
+    font-size: clamp(1.2rem, 5vw, 1.75rem);
+    font-weight: 800;
+    line-height: 1.15;
+    color: rgba(0, 0, 0, 0.87);
+    text-align: right;
+}
+
+.exit-partner-strip-sep {
+    flex-shrink: 0;
+    font-weight: 700;
+    font-size: clamp(1rem, 4vw, 1.35rem);
+    line-height: 1;
+    opacity: 0.4;
+    user-select: none;
+}
+
+/* Fecha / hora / día / últ. visita — indicadores en una fila */
+.exit-visit-indicators-row {
+    border-radius: 8px;
+    background-color: #fafafa;
+    border-left: 3px solid #ff9800;
+}
+
+.exit-visit-indicators-inner {
+    gap: 6px;
+    padding: 10px 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.exit-visit-indicators-inner--entry {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.exit-visit-indicators-split {
+    margin: 0 10px;
+    border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+.exit-visit-indicator--notes {
+    flex: 1.35 1 0;
+    min-width: 96px;
+}
+
+.exit-visit-indicator-notes-value {
+    white-space: normal !important;
+    word-break: break-word;
+    font-weight: 600;
+    line-height: 1.25;
+    max-height: 4.8em;
+    overflow-y: auto;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+.exit-visit-indicator {
+    flex: 1 1 0;
+    min-width: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    padding: 4px 2px;
+}
+
+.exit-visit-indicator-label {
+    font-size: 0.62rem;
+    line-height: 1.15;
+    color: rgba(0, 0, 0, 0.54);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 2px;
+}
+
+.exit-visit-indicator-value {
+    font-size: clamp(0.72rem, 2.8vw, 0.85rem);
+    font-weight: 700;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+/* Fila consumos / descartables / mínimo — más destacada */
+.exit-visit-indicators-inner--consumos {
+    background: rgba(255, 152, 0, 0.11);
+    padding-top: 12px;
+    padding-bottom: 12px;
+    border-radius: 0 0 6px 6px;
+}
+
+.exit-visit-indicator--consumo-main .exit-visit-indicator-label {
+    font-size: 0.68rem;
+}
+
+.exit-visit-indicator--consumo-main .exit-visit-indicator-value {
+    font-size: clamp(0.88rem, 3.6vw, 1.12rem);
+}
+
+.exit-visit-indicator--minimo-wrap {
+    flex: 1.12 1 0;
+    min-width: 104px;
+}
+
+.exit-visit-indicator--minimo-wrap .exit-visit-indicator-value {
+    font-size: clamp(0.82rem, 3.2vw, 1rem);
+}
+
+.exit-visit-indicator--minimo-alert {
+    outline: 2px solid rgba(244, 67, 54, 0.42);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+.exit-visit-indicator-label--wrap {
+    white-space: normal !important;
+    line-height: 1.15;
+    hyphens: auto;
+}
+
+.exit-visit-indicator--entrada-debe {
+    flex: 1.08 1 0;
+    min-width: 86px;
+}
+
+.exit-visit-indicator--entrada-debe-alert {
+    outline: 2px solid rgba(244, 67, 54, 0.42);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+.exit-visit-indicator--link {
+    cursor: pointer;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    border-radius: 6px;
+}
+
+.exit-visit-indicator--link:hover {
+    background-color: rgba(255, 152, 0, 0.12);
+}
+
+.exit-visit-indicator--link:focus {
+    outline: 2px solid rgba(255, 152, 0, 0.55);
+    outline-offset: 2px;
+}
+
+.exit-visit-indicator--link[aria-disabled='true'] {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.exit-visit-indicator--link[aria-disabled='true']:hover {
+    background-color: transparent;
+}
+
+/* Métodos de pago: una fila de botones altos, texto multilínea */
+.exit-pay-methods-toggle {
+    width: 100%;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.exit-pay-methods-toggle ::v-deep .exit-pay-method-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 76px !important;
+    height: auto !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+}
+
+.exit-pay-methods-toggle ::v-deep .exit-pay-method-btn .v-btn__content {
+    white-space: normal !important;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    text-align: center;
+    padding: 10px 4px;
+}
+
+.exit-pay-method-btn-text {
+    display: block;
+    font-size: clamp(0.68rem, 2.8vw, 0.82rem);
+    line-height: 1.28;
+    font-weight: 700;
+    letter-spacing: 0;
+    word-break: break-word;
+    hyphens: auto;
 }
 
 .v-card {
@@ -892,15 +1364,44 @@ import eventBus from '../../event-bus'
     padding: 16px;
 }
 
-/* Asegurar que los botones se vean bien en móvil */
+/* Registrar salida + No paga / observado — evita colisión con .d-flex.flex-wrap en mobile */
+.exit-registrar-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+}
+
+.exit-registrar-actions__primary {
+    flex: 2 1 120px;
+    min-height: 48px !important;
+}
+
+.exit-registrar-actions__secondary {
+    flex: 1 1 118px;
+    min-height: 48px !important;
+}
+
+.exit-registrar-actions__secondary ::v-deep .v-btn__content {
+    justify-content: center;
+}
+
+.exit-registrar-no-paga-label {
+    line-height: 1.2;
+}
+
 @media (max-width: 600px) {
-    .d-flex.flex-wrap {
+    .exit-registrar-actions {
+        flex-wrap: wrap;
         flex-direction: column;
     }
-    
-    .d-flex.flex-wrap .v-btn {
+
+    .exit-registrar-actions__primary,
+    .exit-registrar-actions__secondary {
+        flex: 1 1 auto;
         width: 100%;
-        margin-right: 0 !important;
+        max-width: none;
     }
 }
 </style>

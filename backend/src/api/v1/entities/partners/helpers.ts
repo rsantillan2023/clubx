@@ -16,6 +16,7 @@ import { IVisit } from '../../../../database/schemas/degira/interfaces/visit.int
 import PaymentMethod from '../../../../database/schemas/degira/models/payment_method.model.interface';
 import Ticket from '../../../../database/schemas/degira/models/ticket.model';
 import TicketDetails from '../../../../database/schemas/degira/models/ticket_details.model';
+import { EPaymentMethod } from '../payment_method/types';
 
 const stateIncludeable: Includeable = {
   model: State,
@@ -60,39 +61,54 @@ const getFirstRoleId = (roles: number[] | Array<{ id_role?: number }> | undefine
 export const getPartner = async (partnerParams: IPartnerParams, roles: number[], id_user: number, transaction?: Transaction) => {
   try {
 
-    const { page, pageSize, dni } = partnerParams;
+    const { page, pageSize, dni, id_partner } = partnerParams;
 
     const include: Includeable[] = [stateIncludeable, visitTypeIncludeable];
 
-    let findOptions: FindAndCountOptions = { include };
+    let partners;
 
-    if (page && pageSize) {
+    const idPartnerNumRaw =
+      id_partner !== undefined && id_partner !== null && `${id_partner}`.trim() !== ''
+        ? Number(id_partner)
+        : NaN;
+    const lookupByPartnerId =
+      Number.isFinite(idPartnerNumRaw) && idPartnerNumRaw > 0;
+
+    const dniStr =
+      dni !== undefined && dni !== null && `${dni}`.trim() !== '' ? `${dni}`.trim() : '';
+
+    /** Prioridad por id_partner: evita colisión cuando el mismo DNI aparece como partner_dni de un socio y affiliate_dni de otro */
+    if (lookupByPartnerId) {
+      partners = await Partner.findByPk(idPartnerNumRaw, {
+        include,
+        transaction,
+      });
+    } else if (page && pageSize && dniStr !== '') {
       const { limit, offset } = getPagination(page, pageSize);
-      findOptions = {
-        ...findOptions,
+      const findOptions: FindAndCountOptions = {
+        include,
         offset,
         limit,
         where: {
-          [Op.or]: [
-            { partner_dni: dni },
-            { affiliate_dni: dni },
-          ],
+          [Op.or]: [{ partner_dni: dniStr }, { affiliate_dni: dniStr }],
         },
-        include,
+        transaction,
       };
+      partners = await Partner.findOne(findOptions);
     }
-
-    let partners = await Partner.findOne(findOptions);
 
     if (!partners) {
       const dayOfWeek = getVisitDate(new Date());
       await Operation.create({
         id_user,
         id_operation_type: EOpertationType.LECTURA_DNI,
-        operation_log: `Se busco fallidamente el dni: ${dni}`,
+        operation_log: lookupByPartnerId
+          ? `Se busco fallidamente el id_partner: ${id_partner}`
+          : `Se busco fallidamente el dni: ${dniStr}`,
         id_partner: 3777,
         operation_metadata: JSON.stringify({
-          dni,
+          dni: dniStr || undefined,
+          id_partner: lookupByPartnerId ? id_partner : undefined,
           operation_date: argentinianDate(new Date()),
           id_role: roles
         }),
@@ -203,7 +219,8 @@ export const getPartner = async (partnerParams: IPartnerParams, roles: number[],
       id_partner: partnerId,
       operation_log: JSON.stringify(partners),
       operation_metadata: JSON.stringify({
-        dni,
+        dni: dniStr || undefined,
+        id_partner_requested: lookupByPartnerId ? id_partner : undefined,
         operation_date: argentinianDate(new Date()),
         id_role: roles
       }),
@@ -476,7 +493,7 @@ export const PartnersInClub = async (
   transaction?: Transaction
 ) => {
   try {
-    const { page, pageSize, sortBy, sortDesc } = partnerParams;
+    const { page, pageSize, sortBy, sortDesc, search, id_state, id_visit_type } = partnerParams;
 
 
     let criteria = sortDesc ? 'DESC' : 'ASC';
@@ -493,9 +510,33 @@ export const PartnersInClub = async (
 
     let findOptions: FindAndCountOptions = { include };
 
-    let where: WhereOptions = {
-      hour_exit: null
-    };
+    const whereConditions: WhereOptions[] = [{ hour_exit: null }];
+
+    const searchTrimmed = search != null ? String(search).trim() : '';
+    if (searchTrimmed) {
+      whereConditions.push({
+        [Op.or]: [
+          { '$partner.partner_dni$': { [Op.like]: `%${searchTrimmed}%` } },
+          { '$partner.partner_name$': { [Op.like]: `%${searchTrimmed}%` } },
+          { '$partner.alias$': { [Op.like]: `%${searchTrimmed}%` } },
+          { '$partner.affiliate_dni$': { [Op.like]: `%${searchTrimmed}%` } },
+          { '$partner.affiliate_name$': { [Op.like]: `%${searchTrimmed}%` } },
+          { id_bracelet_1: { [Op.like]: `%${searchTrimmed}%` } },
+          { id_bracelet_2: { [Op.like]: `%${searchTrimmed}%` } },
+        ],
+      });
+    }
+
+    if (id_state) {
+      whereConditions.push({ id_state });
+    }
+
+    if (id_visit_type) {
+      whereConditions.push({ id_visit_type });
+    }
+
+    const where: WhereOptions =
+      whereConditions.length === 1 ? whereConditions[0] : { [Op.and]: whereConditions };
 
 
     if (page && pageSize) {
@@ -1464,6 +1505,94 @@ export const getHistoricalVisits = async (
     }
     throw error;
   }
+};
+
+/** Movimientos de ingreso/salida/entrada rápida del día con método de pago distinto de efectivo (Operations). */
+export const getNonCashVisitPaymentsByDate = async (
+  date: string,
+): Promise<
+  Array<{
+    n: number;
+    id_visit: number | null;
+    id_operation: number;
+    id_bracelet_1: string;
+    alias: string;
+    amount: number;
+    payment_method: string;
+    movement: string;
+  }>
+> => {
+  if (!date || !String(date).trim()) return [];
+
+  const startDate = new Date(date as string);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(date as string);
+  endDate.setHours(23, 59, 59, 999);
+
+  const VISIT_PAYMENT_OPS = [
+    EOpertationType.INGRESO_VISITA,
+    EOpertationType.EGRESO_VISITA,
+    EOpertationType.ENTRADA_RAPIDA,
+  ];
+
+  const operations = await Operation.findAll({
+    where: {
+      operation_date: { [Op.between]: [startDate, endDate] },
+      id_operation_type: { [Op.in]: VISIT_PAYMENT_OPS },
+      id_payment_method: {
+        [Op.notIn]: [EPaymentMethod.EFECTIVO, EPaymentMethod.NO_PAGA],
+      },
+    },
+    attributes: ['id_operation', 'id_visit', 'id_partner', 'id_operation_type', 'operation_amount', 'operation_date'],
+    include: [
+      {
+        model: Partner,
+        as: 'partner',
+        attributes: ['alias', 'partner_name'],
+        required: false,
+      },
+      {
+        model: Visit,
+        as: 'visit',
+        attributes: ['id_bracelet_1', 'id_bracelet_2'],
+        required: false,
+      },
+      {
+        model: PaymentMethod,
+        as: 'payment_method',
+        attributes: ['method'],
+        required: false,
+      },
+    ],
+    order: [
+      ['operation_date', 'ASC'],
+      ['id_operation', 'ASC'],
+    ],
+  });
+
+  const movementLabel = (type: number): string => {
+    if (type === EOpertationType.EGRESO_VISITA) return 'Salida';
+    if (type === EOpertationType.ENTRADA_RAPIDA) return 'Entrada ráp.';
+    return 'Entrada';
+  };
+
+  return operations.map((op, idx) => {
+    const j = op.toJSON() as any;
+    const visit = j.visit;
+    const partner = j.partner;
+    const bracelet = (visit?.id_bracelet_1 as string | undefined) || '';
+    const aliasRaw = partner?.alias != null ? String(partner.alias) : '';
+    return {
+      n: idx + 1,
+      id_visit: j.id_visit != null ? Number(j.id_visit) : null,
+      id_operation: Number(j.id_operation),
+      id_bracelet_1: bracelet || '—',
+      alias: aliasRaw.trim() !== '' ? aliasRaw : partner?.partner_name || '—',
+      amount: Number(j.operation_amount || 0),
+      payment_method: (j.payment_method?.method as string) || '—',
+      movement: movementLabel(Number(j.id_operation_type)),
+    };
+  });
 };
 
 // Helper para obtener datos del histograma

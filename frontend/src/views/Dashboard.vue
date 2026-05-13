@@ -120,7 +120,8 @@ export default {
           if(routes.includes('/access')) routes = routes.concat(['/entryRegister', '/entryRegisterLite', '/activeVisits', '/membershipReactivation', '/registerPartner','/registerPartnerLite'])
           if(routes.includes('/accessMembership')) routes = routes.concat(['/entryRegister', '/entryRegisterLite', '/activeVisits', '/membershipReactivation', '/registerPartner','/registerPartnerLite'])
           if(routes.includes('/activeVisits')) routes = routes.concat(['/consumed', '/quienes-pagan-a-la-salida'])
-          if(routes.includes('/consumed')) routes = routes.concat(['/exitRegister'])
+          if(routes.includes('/productsSale')) routes = routes.concat(['/productsSalePickPartner'])
+          if(routes.includes('/consumed')) routes = routes.concat(['/exitRegister', '/verConsumos'])
 
           //limpio duplicados
           let routes_clean = routes.filter((item,index)=>{

@@ -52,7 +52,7 @@
       </v-card>
     </div>
 
-    <!-- 3. Los 5 botones juntos del mismo tamaño -->
+    <!-- 3. Misma barra de acciones que ConsumedSmall / ConsumedActions -->
     <ConsumedActions
       :roles="roles"
       :items="items"
@@ -65,8 +65,24 @@
       @clickVolver="$emit('clickVolver')"
       @clickExit="goExit">
     </ConsumedActions>
+
+      <div
+        v-if="items.length > 0 && partner"
+        class="salida-club-wrap px-md-15 px-5 mb-4"
+      >
+        <v-btn
+          block
+          depressed
+          dark
+          color="deep-orange darken-2"
+          class="salida-club-btn"
+          @click="goExit"
+        >
+          SALIDA DEL CLUB
+        </v-btn>
+      </div>
        
-      <div class="px-md-15 px-5 pb-3 pt-2 d-flex align-center justify-space-between">
+      <div class="px-md-15 px-5 pb-2 pt-2 d-flex align-center justify-space-between flex-wrap">
         <span class="orange--text font-weight-bold " style="font-size: 1.1rem;">Detalle de consumos realizados</span>
         <v-btn
           color="green"
@@ -80,6 +96,32 @@
         </v-btn>
       </div>
 
+      <div
+        v-if="bulkSelectEnabled && items.length > 0"
+        class="px-md-15 px-5 pb-3 d-flex align-center justify-space-between flex-wrap"
+      >
+        <div class="d-flex align-center flex-shrink-0" style="gap: 2px;">
+          <v-btn small text color="orange" class="px-2" min-width="0" @click="$emit('toggle-all-detail-select')">
+            <v-icon left small>{{ bulkHeaderChecked ? 'mdi-checkbox-marked-outline' : 'mdi-checkbox-blank-outline' }}</v-icon>
+            Anular todas
+          </v-btn>
+          <v-btn small text color="grey darken-2" class="px-2" min-width="0" :disabled="!selectionDetailIds.length" @click="$emit('clear-detail-selection')">
+            Limpiar
+          </v-btn>
+        </div>
+        <v-btn
+          color="deep-orange darken-2"
+          dark
+          small
+          class="flex-shrink-0 ml-md-4 mt-2 mt-md-0"
+          :disabled="!selectionDetailIds.length"
+          @click="$emit('bulk-anular')"
+        >
+          <v-icon left small>mdi-delete-sweep</v-icon>
+          Anular ({{ selectionDetailIds.length }})
+        </v-btn>
+      </div>
+
       <v-card outlined elevation="0">
           <v-data-table
           :headers="headers"
@@ -89,6 +131,36 @@
           :items-per-page="-1" 
           :loading="load"
           no-data-text="No hay consumos">
+
+            <template v-slot:header.bulk_sel>
+              <v-checkbox
+                v-if="bulkSelectEnabled && anulableTicketDetailIds.length"
+                :ripple="false"
+                dense
+                hide-details
+                class="mt-0 pt-0"
+                color="orange"
+                :input-value="bulkHeaderChecked"
+                :indeterminate="bulkHeaderIndeterminate"
+                aria-label="Seleccionar todos los consumos anulables"
+                @change="$emit('toggle-all-detail-select')"
+              />
+              <span v-else-if="bulkSelectEnabled" class="grey--text text--caption">—</span>
+            </template>
+
+            <template v-slot:item.bulk_sel="{ item }">
+              <v-checkbox
+                v-if="rowEligibleForBulk(item)"
+                :ripple="false"
+                dense
+                hide-details
+                color="orange"
+                class="mt-0 pt-0"
+                :input-value="selectionDetailIds.includes(item.id_ticket_detail)"
+                aria-label="Marcar para anular"
+                @change="$emit('toggle-detail-select', item.id_ticket_detail)"
+              />
+            </template>
 
             <template v-slot:item.actions="{ item }">
               <v-icon
@@ -132,8 +204,9 @@
       ConsumedActions
     },
     props: {
-      roles: { type: Array}, 
-      items: { type: Array},
+      roles: { type: Array },
+      items: { type: Array },
+      selectionDetailIds: { type: Array, default: () => [] },
       brazalete: {},
       tipoVisita: {},
       partner: {},
@@ -145,7 +218,7 @@
       loadB2: false,
       nrobrazalete: null,
       headers: [
-        
+        { text: '', value: 'bulk_sel', align: 'center', width: '56', sortable: false },
         { text: '#', value: 'id', align: 'center'},
         { text: 'Descripcion', value: 'description', align: 'center' },
         { text: 'Hora de consumo', value: 'ticket_date', align: 'center' },
@@ -165,6 +238,25 @@
     },
 
     computed: {
+      bulkSelectEnabled () {
+        return this.roles && (this.roles.includes(1) || this.roles.includes(2) || this.roles.includes(3))
+      },
+      anulableTicketDetailIds () {
+        if (!this.items || !this.bulkSelectEnabled) return []
+        return this.items
+          .filter((item) => this.rowEligibleForBulk(item))
+          .map((i) => i.id_ticket_detail)
+          .filter((id) => id != null)
+      },
+      bulkHeaderChecked () {
+        const ids = this.anulableTicketDetailIds
+        return ids.length > 0 && ids.every((id) => this.selectionDetailIds.includes(id))
+      },
+      bulkHeaderIndeterminate () {
+        const ids = this.anulableTicketDetailIds
+        const n = ids.filter((id) => this.selectionDetailIds.includes(id)).length
+        return n > 0 && n < ids.length
+      },
       total () {
         let total = 0
         this.items.map( (item) => {
@@ -229,6 +321,14 @@
     },
 
     methods: {
+      rowEligibleForBulk (item) {
+        return (
+          item.payed == 0 &&
+          item.quantity > 0 &&
+          this.roles &&
+          (this.roles.includes(1) || this.roles.includes(2) || this.roles.includes(3))
+        )
+      },
       formatAlias(alias) {
         if (!alias) return '';
         return String(alias).replace(/---/g, ' ');
@@ -248,11 +348,8 @@
         })
       },
       goExit() {
-        let data = this.partner
-        data.total = this.total
-
+        const data = Object.assign({}, this.partner, { total: this.total })
         this.$store.commit('setPartner', data)
-
         this.$router.push('/exitRegister')
       },
       
@@ -351,5 +448,19 @@
   50% {
     box-shadow: 0 6px 20px rgba(255, 152, 0, 0.5);
   }
+}
+
+.salida-club-wrap {
+  width: 100%;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.salida-club-btn {
+  min-height: 52px !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
 }
 </style>

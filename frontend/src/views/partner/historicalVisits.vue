@@ -4,10 +4,12 @@
         <v-card class="mb-4" elevation="1" style="border-radius: 12px;">
             <v-card-text class="pa-4">
                 <v-row align="center">
-                    <v-col cols="12" md="4">
+                    <v-col cols="12" class="historical-toolbar-col px-2 px-sm-3">
+                        <div class="historical-date-toolbar d-flex align-center flex-nowrap">
                         <v-menu
                             ref="menu"
                             v-model="menu"
+                            class="historical-toolbar-menu flex-shrink-0"
                             :close-on-content-click="false"
                             :return-value.sync="selectedDate"
                             transition="scale-transition"
@@ -18,21 +20,23 @@
                                 <div class="date-selector-wrapper">
                                     <v-text-field
                                         :value="formattedDate"
-                                        label="Seleccionar Fecha"
-                                        placeholder="Haga clic para elegir una fecha"
+                                        label="Fecha"
+                                        placeholder="—"
                                         readonly
+                                        hide-details
+                                        single-line
                                         filled
                                         rounded
                                         dense
-                                        class="date-input-field"
                                         v-bind="attrs"
                                         v-on="on"
+                                        class="date-input-field historical-compact-date"
                                         @click="menu = true"
                                     >
                                         <template v-slot:prepend-inner>
                                             <v-icon 
                                                 color="orange" 
-                                                size="24"
+                                                size="18"
                                                 class="calendar-icon"
                                                 v-bind="attrs"
                                                 v-on="on"
@@ -40,19 +44,6 @@
                                             >
                                                 mdi-calendar
                                             </v-icon>
-                                        </template>
-                                        <template v-slot:append>
-                                            <v-btn
-                                                icon
-                                                small
-                                                color="orange"
-                                                v-bind="attrs"
-                                                v-on="on"
-                                                @click.stop="menu = true"
-                                                class="calendar-button"
-                                            >
-                                                <v-icon>mdi-calendar-arrow-right</v-icon>
-                                            </v-btn>
                                         </template>
                                     </v-text-field>
                                 </div>
@@ -72,18 +63,111 @@
                                 <v-btn text color="orange" @click="onDateChange">Aceptar</v-btn>
                             </v-date-picker>
                         </v-menu>
+                                <div class="historical-quick-btns d-flex align-center flex-nowrap flex-shrink-0">
+                                <v-btn
+                                    x-small
+                                    depressed
+                                    :dark="quickPresetMatches(0)"
+                                    :outlined="!quickPresetMatches(0)"
+                                    color="orange"
+                                    class="historical-quick-btn flex-shrink-0"
+                                    @click="quickPickDate(0)"
+                                >
+                                    Hoy
+                                </v-btn>
+                                <v-btn
+                                    x-small
+                                    depressed
+                                    :dark="quickPresetMatches(1)"
+                                    :outlined="!quickPresetMatches(1)"
+                                    color="orange"
+                                    class="historical-quick-btn flex-shrink-0"
+                                    @click="quickPickDate(1)"
+                                >
+                                    Ayer
+                                </v-btn>
+                                <v-btn
+                                    x-small
+                                    depressed
+                                    :dark="quickPresetMatches(2)"
+                                    :outlined="!quickPresetMatches(2)"
+                                    color="orange"
+                                    class="historical-quick-btn flex-shrink-0"
+                                    @click="quickPickDate(2)"
+                                >
+                                    Antes de ayer
+                                </v-btn>
+                                <v-btn
+                                    x-small
+                                    depressed
+                                    :dark="quickPresetMatchesWeekday(6)"
+                                    :outlined="!quickPresetMatchesWeekday(6)"
+                                    color="orange"
+                                    class="historical-quick-btn flex-shrink-0"
+                                    @click="quickPickWeekday(6)"
+                                >
+                                    Último sábado
+                                </v-btn>
+                                <v-btn
+                                    x-small
+                                    depressed
+                                    :dark="quickPresetMatchesWeekday(5)"
+                                    :outlined="!quickPresetMatchesWeekday(5)"
+                                    color="orange"
+                                    class="historical-quick-btn flex-shrink-0"
+                                    @click="quickPickWeekday(5)"
+                                >
+                                    Último viernes
+                                </v-btn>
+                                <v-btn
+                                    x-small
+                                    depressed
+                                    :dark="quickPresetMatchesWeekday(3)"
+                                    :outlined="!quickPresetMatchesWeekday(3)"
+                                    color="orange"
+                                    class="historical-quick-btn flex-shrink-0"
+                                    @click="quickPickWeekday(3)"
+                                >
+                                    Último miércoles
+                                </v-btn>
+                                <v-btn
+                                    x-small
+                                    depressed
+                                    outlined
+                                    color="grey darken-1"
+                                    class="historical-quick-btn flex-shrink-0"
+                                    @click="openDatePickerOnly"
+                                >
+                                    <v-icon left x-small color="orange">mdi-calendar</v-icon>
+                                    Elegir fecha
+                                </v-btn>
+                            </div>
+                        </div>
                     </v-col>
-                    <v-col cols="12" md="8" class="d-flex align-center justify-end">
+                    <v-col cols="12" class="d-flex align-center justify-end flex-shrink-0 flex-wrap mt-2 mt-lg-0">
                         <v-btn
                             color="purple"
                             dark
                             rounded
                             @click="openHistogramModal"
-                            class="mr-2"
+                            class="mr-2 mb-1 mb-md-0"
                             elevation="2"
                         >
                             <v-icon left>mdi-chart-bar</v-icon>
                             Ver Histograma
+                        </v-btn>
+                        <v-btn
+                            color="deep-purple"
+                            dark
+                            rounded
+                            :disabled="!selectedDate"
+                            :loading="loadNonCashPayments"
+                            @click="openNonCashPaymentsModal"
+                            class="mr-2 mb-1 mb-md-0"
+                            elevation="2"
+                        >
+                            <v-icon left>mdi-credit-card-outline</v-icon>
+                            Pagos no efectivo
                         </v-btn>
                         <v-btn
                             color="green"
@@ -91,6 +175,7 @@
                             rounded
                             @click="archiveXLS"
                             :loading="loadExcel"
+                            class="mb-1 mb-md-0"
                             elevation="2"
                         >
                             <v-icon left>mdi-file-excel</v-icon>
@@ -301,6 +386,63 @@
         v-model="showHistogramModal"
         @close="showHistogramModal = false"
        />
+
+       <v-dialog
+         v-model="showNonCashPaymentsModal"
+         max-width="720px"
+         scrollable
+       >
+         <v-card>
+           <v-toolbar color="orange" dark flat dense>
+             <v-icon class="mr-2">mdi-credit-card-outline</v-icon>
+             <span class="font-weight-bold">Pagos del día (≠ efectivo)</span>
+             <v-spacer />
+             <v-btn
+               small
+               outlined
+               color="white"
+               class="mr-2 text-none"
+               :disabled="!nonCashPaymentRows.length || loadNonCashPayments"
+               :loading="loadNonCashExportExcel"
+               @click="exportNonCashPaymentsExcel"
+             >
+               <v-icon left small color="green lighten-4">mdi-file-excel</v-icon>
+               Excel
+             </v-btn>
+             <v-btn icon small dark @click="showNonCashPaymentsModal = false">
+               <v-icon>mdi-close</v-icon>
+             </v-btn>
+           </v-toolbar>
+           <v-card-text class="pt-4 px-0 pb-0">
+             <p class="px-4 mb-2 text-body-2 grey--text text--darken-1">
+               Fecha seleccionada:
+               <strong class="black--text">{{ formattedDate || '—' }}</strong>
+               — Ingreso, salida y entrada rápida con tarjeta o transferencia.
+             </p>
+             <v-data-table
+               :headers="nonCashTableHeaders"
+               :items="nonCashPaymentRows"
+               :loading="loadNonCashPayments"
+               dense
+               hide-default-footer
+               :items-per-page="-1"
+               class="elevation-0 non-cash-pay-table"
+               no-data-text="No hay pagos con medio distinto de efectivo en ese día"
+             >
+               <template v-slot:item.alias="{ item }">
+                 {{ formatAliasDisplay(item.alias) }}
+               </template>
+               <template v-slot:item.amount="{ item }">
+                 <span class="font-weight-medium">${{ formatNumber(item.amount) }}</span>
+               </template>
+             </v-data-table>
+             <div v-if="nonCashPaymentRows.length" class="px-4 py-3 d-flex justify-space-between align-center subtitle-2">
+               <span class="grey--text">Total movimientos: {{ nonCashPaymentRows.length }}</span>
+               <span class="font-weight-bold orange--text">Sumatoria ${{ formatNumber(nonCashPaymentsTotalAmount) }}</span>
+             </div>
+           </v-card-text>
+         </v-card>
+       </v-dialog>
     </div>
 </template>
 
@@ -330,6 +472,18 @@
       selectedDate: null,
       menu: false,
       showHistogramModal: false,
+      showNonCashPaymentsModal: false,
+      nonCashPaymentRows: [],
+      loadNonCashPayments: false,
+      loadNonCashExportExcel: false,
+      nonCashTableHeaders: [
+        { text: '#', value: 'n', width: '48', align: 'center', sortable: false },
+        { text: 'Nº tarjeta', value: 'id_bracelet_1', sortable: false },
+        { text: 'Alias', value: 'alias', sortable: false },
+        { text: 'Monto', value: 'amount', align: 'end', sortable: false },
+        { text: 'Medio', value: 'payment_method', sortable: false },
+        { text: 'Tipo', value: 'movement', sortable: false, width: '110' },
+      ],
       datesWithVisits: [], // Fechas que tienen visitantes
       options: {
             sortBy:['visit_date'],
@@ -451,6 +605,13 @@
         },
         hasActiveFilters() {
             return !!(this.searchText || this.filters.id_state || this.filters.id_visit_type);
+        },
+        nonCashPaymentsTotalAmount() {
+            if (!this.nonCashPaymentRows || !this.nonCashPaymentRows.length) return 0;
+            const t = this.nonCashPaymentRows.reduce((sum, row) => {
+                return sum + (parseFloat(row.amount) || 0);
+            }, 0);
+            return parseFloat(t.toFixed(2));
         }
     },
     watch: {
@@ -489,9 +650,56 @@
           this.$refs.menu.save(this.selectedDate);
         }
         this.menu = false;
+        this.options.page = 1;
         this.$nextTick(() => {
           this.getVisits();
         });
+      },
+      /** @param {number} daysAgo 0=hoy, 1=ayer, 2=antes de ayer */
+      quickPresetMatches (daysAgo) {
+        if (!this.selectedDate) return false;
+        const target = this.$moment().subtract(daysAgo, 'days').format('YYYY-MM-DD');
+        return this.selectedDate === target;
+      },
+      quickPickDate (daysAgo) {
+        this.menu = false;
+        this.selectedDate = this.$moment().subtract(daysAgo, 'days').format('YYYY-MM-DD');
+        this.options.page = 1;
+        if (this.$refs.menu && this.selectedDate) {
+          this.$refs.menu.save(this.selectedDate);
+        }
+        this.$nextTick(() => {
+          this.getVisits();
+        });
+      },
+      /**
+       * Índice de día según Moment: 0=dom … 6=sábado.
+       * Fecha más reciente de ese día de semana contando desde hoy (incluye hoy si coincide).
+       */
+      getMostRecentWeekdayMoment (momentDayIndex) {
+        const today = this.$moment().startOf('day');
+        const curr = today.day();
+        const diff = (curr - momentDayIndex + 7) % 7;
+        return today.clone().subtract(diff, 'days');
+      },
+      quickPresetMatchesWeekday (momentDayIndex) {
+        if (!this.selectedDate) return false;
+        const target = this.getMostRecentWeekdayMoment(momentDayIndex).format('YYYY-MM-DD');
+        return this.selectedDate === target;
+      },
+      quickPickWeekday (momentDayIndex) {
+        this.menu = false;
+        this.selectedDate = this.getMostRecentWeekdayMoment(momentDayIndex).format('YYYY-MM-DD');
+        this.options.page = 1;
+        if (this.$refs.menu && this.selectedDate) {
+          this.$refs.menu.save(this.selectedDate);
+        }
+        this.$nextTick(() => {
+          this.getVisits();
+        });
+      },
+      openDatePickerOnly () {
+        this.menu = true;
       },
       async loadStates() {
         try {
@@ -535,6 +743,75 @@
         console.log('showHistogramModal antes:', this.showHistogramModal);
         this.showHistogramModal = true;
         console.log('showHistogramModal después:', this.showHistogramModal);
+      },
+      openNonCashPaymentsModal () {
+        if (!this.selectedDate) {
+          this.$toast.error('Seleccione una fecha');
+          return;
+        }
+        this.showNonCashPaymentsModal = true;
+        this.fetchNonCashPayments();
+      },
+      async fetchNonCashPayments () {
+        if (!this.selectedDate) return;
+        this.loadNonCashPayments = true;
+        try {
+          const res = await this.$http.get(
+            `${process.env.VUE_APP_DEGIRA}partners/historical-non-cash-payments`,
+            { params: { date: this.selectedDate } }
+          );
+          this.nonCashPaymentRows = Array.isArray(res.data && res.data.data) ? res.data.data : [];
+        } catch (e) {
+          console.error(e);
+          this.nonCashPaymentRows = [];
+          const msg =
+            e.response &&
+            e.response.data &&
+            e.response.data.message
+              ? e.response.data.message
+              : 'No se pudo obtener el listado de pagos.';
+          if (this.$toast && this.$toast.error) this.$toast.error(msg);
+        } finally {
+          this.loadNonCashPayments = false;
+        }
+      },
+      formatAliasDisplay (alias) {
+        if (!alias || alias === '—') return '—';
+        return String(alias).replace(/---/g, ' ');
+      },
+      exportNonCashPaymentsExcel () {
+        if (!this.nonCashPaymentRows || !this.nonCashPaymentRows.length) {
+          if (this.$toast && this.$toast.error) this.$toast.error('No hay filas para exportar');
+          return;
+        }
+        this.loadNonCashExportExcel = true;
+        const data = this.nonCashPaymentRows.map((r) => ({
+          N: r.n,
+          Numero_tarjeta: r.id_bracelet_1 || '',
+          Alias: this.formatAliasDisplay(r.alias),
+          Monto: Number(r.amount) || 0,
+          Medio_de_pago: r.payment_method || '',
+          Tipo_movimiento: r.movement || '',
+          Id_visita: r.id_visit != null ? r.id_visit : '',
+        }));
+        data.push({
+          N: '',
+          Numero_tarjeta: '',
+          Alias: 'TOTAL',
+          Monto: this.nonCashPaymentsTotalAmount,
+          Medio_de_pago: '',
+          Tipo_movimiento: `${this.nonCashPaymentRows.length} mov.`,
+          Id_visita: '',
+        });
+        const timeAndHour = this.$moment().format('DDMMYYYYHHmm');
+        const fileName = `Pagos_No_Efectivo_${this.selectedDate || 'fecha'}_${timeAndHour}`;
+        const exportType = exportFromJSON.types.xls;
+        try {
+          downloadFileRN({ data, fileName, exportType });
+          exportFromJSON({ data, fileName, exportType });
+        } finally {
+          this.loadNonCashExportExcel = false;
+        }
       },
       getVisits() {
         if (!this.selectedDate) {
@@ -855,6 +1132,55 @@
 
 .date-input-field ::v-deep label {
   cursor: pointer;
+}
+
+.historical-toolbar-col {
+  min-width: 0;
+}
+
+.historical-date-toolbar {
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+  padding-bottom: 2px;
+  gap: 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.historical-compact-date {
+  max-width: 124px;
+}
+
+.historical-compact-date ::v-deep .v-input__slot {
+  min-height: 36px !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+.historical-compact-date ::v-deep .v-label {
+  font-size: 0.7rem;
+}
+
+.historical-compact-date ::v-deep input {
+  font-size: 0.8rem;
+  padding-top: 2px !important;
+  padding-bottom: 0 !important;
+  cursor: pointer;
+}
+
+.historical-quick-btns {
+  gap: 4px;
+}
+
+.historical-quick-btn {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 600;
+  font-size: 0.65rem !important;
+  padding: 0 6px !important;
+  height: 28px !important;
+  min-width: auto !important;
 }
 </style>
 

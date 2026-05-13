@@ -60,19 +60,20 @@
             <span v-else class="text-body-2">{{text}}</span>
         </v-col>
 
-        <v-col cols="12" class="mt-3 d-flex justify-center">
-            <v-row no-gutters class="justify-center" style="width: 100%;">
-                <v-col cols="12" class="d-flex justify-center flex-wrap">
-                    <v-btn 
-                        v-if="closeDialog"
-                        color="orange" 
-                        dark 
-                        small 
-                        class="ma-1"
-                        @click="continueSelling" 
-                        style="font-size: 0.75rem;">
-                        Seguir vendiendo
-                    </v-btn>
+        <v-col cols="12" class="mt-3 px-2">
+            <div class="d-flex flex-column align-center" style="width: 100%;">
+                <v-btn 
+                    v-if="closeDialog"
+                    color="orange" 
+                    dark 
+                    depressed
+                    :large="prominentContinueSelling"
+                    :small="!prominentContinueSelling"
+                    :class="prominentContinueSelling ? 'modal-confirm-continue-sale-lg mb-3' : 'ma-1'"
+                    @click="continueSelling">
+                    Seguir vendiendo
+                </v-btn>
+                <div class="d-flex justify-center flex-wrap align-center">
                     <v-btn 
                         v-if="sendToWhatsapp"
                         color="#25d366" 
@@ -107,8 +108,19 @@
                         <v-icon left small>mdi-account-group</v-icon>
                         Ver socios en el club
                     </v-btn>
-                </v-col>
-            </v-row>
+                </div>
+                <v-btn
+                    v-if="exitClubPartnerIsReady"
+                    block
+                    depressed
+                    dark
+                    color="deep-orange darken-2"
+                    class="modal-exit-club-btn mt-3"
+                    @click="goSalidaClub"
+                >
+                    SALIDA DEL CLUB
+                </v-btn>
+            </div>
         </v-col>
     </v-row>
 
@@ -167,7 +179,11 @@
             whatsappData: {}, //Datos que debe llevar el boton de whatsapp, aca debe venir un objeto {textWhatsappDialog: 'Texto a enviar por whatsapp', phoneNumber: '542213332244'}
             goToHome: {type: Boolean, default: true}, //Si debe aparecer el boton ir a home por defecto aparece enviarlo en false cuando no quieras q aparezca
             closeDialog: {type: Boolean, default: false}, //Si quieres que deje cerrar el modal, habilita la X arriba
-            goTo: {}, //Boton dinamico para ir a cualquier otra ruta aca debe venir un objeto, por ejemplo {title: 'Volver', icon: "mdi-arrow-left", route: '/access'}
+            /** Ruta para «Seguir vendiendo» (recarga). Vacío → /productsSale */
+            continueSellingRoute: { type: String, default: '' },
+            goTo: {}, // Botones dinámicos { title, icon?, route } o función action
+            /** Payload para «Salida del club»: se envía al store con total y se navega a /exitRegister */
+            exitClubPartner: { type: Object, default: null },
             cardNumber: {type: [String, Number], default: null}, //Número de tarjeta para mostrar debajo del título
             
         },
@@ -216,6 +232,14 @@
                     else return [this.goTo]
                 }else return []
                 
+            },
+            exitClubPartnerIsReady() {
+                const p = this.exitClubPartner;
+                /* El padre solo envía objeto cuando hay socio; no exigir id_bracelet_1/id_visit (p. ej. ingreso rápido). */
+                return !!(p && typeof p === 'object');
+            },
+            prominentContinueSelling() {
+                return !!(this.closeDialog && !this.goToComputed.length);
             },
             icon(){
                 let icon = 'mdi-check-circle'
@@ -389,8 +413,16 @@
             },
             continueSelling(){
                 this.close();
-                // Forzar recarga completa de la página para limpiar todo el estado
-                window.location.href = '/productsSale';
+                const raw = this.continueSellingRoute != null ? String(this.continueSellingRoute).trim() : '';
+                const path = raw !== '' ? (raw.startsWith('/') ? raw : `/${raw}`) : '/productsSale';
+                window.location.href = path;
+            },
+            goSalidaClub() {
+                if (!this.exitClubPartnerIsReady) return;
+                const data = { ...this.exitClubPartner };
+                this.$store.commit('setPartner', data);
+                this.close();
+                this.$router.push('/exitRegister');
             },
             close(){
                 let dialog = {  show: false, 
@@ -419,3 +451,23 @@
         }
     } 
 </script>
+
+<style scoped>
+.modal-confirm-continue-sale-lg {
+    width: 100%;
+    max-width: 340px;
+    min-height: 52px !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em;
+}
+
+.modal-exit-club-btn {
+    width: 100%;
+    max-width: 340px;
+    min-height: 52px !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em;
+}
+</style>

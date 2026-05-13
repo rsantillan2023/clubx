@@ -13,6 +13,7 @@ import {
   getPartnersList,
   getHistoricalVisits,
   getHistogramData,
+  getNonCashVisitPaymentsByDate,
   getDatesWithVisits,
   getVisitsWithConsumptions,
   getDatesWithConsumptions,
@@ -35,7 +36,7 @@ export const partnerMembershipChecker = async (req: Request, res: Response) => {
 
 export const getPartnerByDni = async (req: Request, res: Response) => {
   const {
-    query: { page, pageSize, dni },
+    query: { page, pageSize, dni, id_partner },
     body: { id_user = '', roles = [] }
   } = req;
   try {
@@ -45,6 +46,12 @@ export const getPartnerByDni = async (req: Request, res: Response) => {
           page: Number(page),
           pageSize: Number(pageSize),
           dni,
+          id_partner:
+            id_partner !== undefined &&
+            id_partner !== null &&
+            `${id_partner}`.trim() !== ''
+              ? `${id_partner}`.trim()
+              : undefined,
         }),
       ),
       roles,
@@ -310,6 +317,25 @@ export const getHistoricalVisitsController = async (req: Request, res: Response)
       roles,
     );
     responseHandler(response, res, Number(page), Number(pageSize));
+  } catch (error: any) {
+    const { code = 400, message = 'Error Desconocido' } = error as IErrorResponse;
+    res.status(code).send({ message });
+  }
+};
+
+/** Pagos del día registrados como ingreso/salida/entr. rápida con método ≠ efectivo. */
+export const getHistoricalNonCashPaymentsController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { query } = req;
+    const date = typeof query.date === 'string' ? query.date.trim() : '';
+    if (!date) {
+      return res.status(400).send({ message: 'Se requiere el parámetro date (YYYY-MM-DD)' });
+    }
+    const rows = await getNonCashVisitPaymentsByDate(date);
+    responseHandler(rows, res);
   } catch (error: any) {
     const { code = 400, message = 'Error Desconocido' } = error as IErrorResponse;
     res.status(code).send({ message });

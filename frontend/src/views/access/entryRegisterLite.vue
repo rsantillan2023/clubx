@@ -1,5 +1,78 @@
 <template>
   <div class="py-5">
+        <v-row class="justify-center px-5 mb-2" v-if="isPartnerObserved">
+            <v-col cols="12" md="10">
+                <v-alert type="info" dense outlined class="mb-3 observed-partner-alert">
+                    <div class="observed-banner__line">
+                        <div class="observed-banner__left d-flex flex-wrap align-center">
+                            <span class="observed-banner__lead font-weight-medium">Socio observado —</span>
+                            <v-icon small color="info" class="ml-1 mr-1 flex-shrink-0">{{ icon.icon }}</v-icon>
+                            <span class="font-weight-medium">
+                                {{ partner.state && partner.state.description ? partner.state.description : 'Socio observado' }}
+                                —
+                                {{ partner.state && partner.state.actions && partner.state.actions.description ? partner.state.actions.description : '' }}
+                            </span>
+                        </div>
+                        <div class="observed-banner__chip-only">
+                            <v-chip
+                                x-small
+                                :color="getLastVisitColor(partner.last_visit)"
+                                text-color="white"
+                                class="ma-0"
+                            >
+                                {{ partner.last_visit ? formatPartnerDate(partner.last_visit,'DD/MM/YYYY') : 'N/A' }}
+                            </v-chip>
+                        </div>
+                    </div>
+                </v-alert>
+                <v-card outlined class="pa-3">
+                    <v-row dense align="start">
+                        <v-col cols="12" md="6">
+                            <v-select
+                                v-model="editPartnerState"
+                                :items="states"
+                                label="Cambiar estado"
+                                item-text="description"
+                                item-value="id_state"
+                                dense
+                                outlined
+                                :menu-props="{ offsetY: true, maxHeight: 320 }"
+                                hide-details="auto"
+                            >
+                                <template v-slot:selection="{ item }">
+                                    <span v-if="item" :class="`${stateColorName(item.id_state)}--text font-weight-bold`">{{ item.description }}</span>
+                                </template>
+                                <template v-slot:item="{ item }">
+                                    <span :class="`${stateColorName(item.id_state)}--text`">{{ item.description }}</span>
+                                </template>
+                            </v-select>
+                            <div v-if="statesLoadedEmpty" class="text-caption red--text mt-1">No hay estados disponibles — verifique conexión o permisos</div>
+                        </v-col>
+                        <v-col cols="12" md="6">
+                            <v-textarea
+                                v-model="editPartnerObservations"
+                                label="Observaciones del socio"
+                                rows="3"
+                                outlined
+                                dense
+                                hide-details="auto"
+                            />
+                        </v-col>
+                        <v-col cols="12" class="d-flex justify-end">
+                            <v-btn
+                                color="info"
+                                dark
+                                :loading="savingPartnerObservations"
+                                @click="savePartnerObservationState"
+                            >
+                                <v-icon left>mdi-content-save</v-icon>
+                                Guardar estado y observaciones
+                            </v-btn>
+                        </v-col>
+                    </v-row>
+                </v-card>
+            </v-col>
+        </v-row>
         <v-row class="justify-center align-center py-2">
             <v-col cols="12" md="auto" class="text-center">
                 <span class="orange--text text-uppercase headline">{{getCleanAlias}}</span>
@@ -64,35 +137,37 @@
 
                 <v-row no-gutters v-if="selectPayMethod != 5">
                     <v-col cols="12" class="px-1 mb-2">
-                        <v-checkbox
-                            v-model="pagaEstacionamiento"
-                            label="Paga estacionamiento"
-                            color="orange"
-                            hide-details
-                            dense
-                            @change="onPagaEstacionamientoChange"
-                        />
+                        <div class="entry-extras-inline d-flex flex-wrap align-center">
+                            <v-checkbox
+                                v-model="pagaEstacionamiento"
+                                label="Paga estacionamiento"
+                                color="orange"
+                                hide-details
+                                dense
+                                class="mt-0 mr-4 entry-extras-inline__chk"
+                                @change="onPagaEstacionamientoChange"
+                            />
+                            <v-checkbox
+                                v-if="partner && partner.id_state != 8"
+                                v-model="pagarALaSalida"
+                                label="Pagar entrada a la salida"
+                                color="orange"
+                                hide-details
+                                dense
+                                class="mt-0 mr-4 entry-extras-inline__chk"
+                                @change="onPagarALaSalidaChange"
+                            />
+                            <v-text-field
+                                class="entry-extras-inline__amount flex-grow-1"
+                                label="Registre aca si se cobro algun monto adicional"
+                                outlined
+                                dense
+                                hide-details="auto"
+                                v-model="items.other_paid"
+                                type="number"
+                            />
+                        </div>
                     </v-col>
-                    <v-col cols="12" class="px-1 mb-2" v-if="partner && partner.id_state != 8">
-                        <v-checkbox
-                            v-model="pagarALaSalida"
-                            label="Pagar entrada a la salida"
-                            color="orange"
-                            hide-details
-                            dense
-                            @change="onPagarALaSalidaChange"
-                        />
-                    </v-col>
-                    <v-col cols="12" :md="(items.other_paid) ? 6 : 12" class="px-1">
-                        <v-text-field
-                            label="Registre aca si se cobro algun monto adicional"
-                            outlined
-                            dense
-                            v-model="items.other_paid"
-                            type="number"
-                        />
-                    </v-col>
-        
                     <v-col cols="12" :md="(items.other_paid) ? 6 : 12" class="px-1" v-if="items.other_paid">
                         <v-text-field
                             label="Concepto del pago adicional"
@@ -170,15 +245,30 @@
                 </v-row>
             </v-col>
 
-            <v-col cols="12" class="px-1">
-                <v-textarea
-                    label="Observaciones"
-                    rows="3"
-                    outlined
-                    dense
-                    v-model="items.entry_visit_obs"
-                    :rules='(selectPayMethod == 5) ? [(v) => !!v || "Este campo es requerido"] : []'
-                />
+            <v-col cols="12" class="px-1 pb-2">
+                <div class="entry-obs-submit-inline d-flex flex-wrap">
+                    <v-textarea
+                        class="entry-obs-submit-inline__textarea"
+                        label="Observaciones"
+                        rows="3"
+                        outlined
+                        dense
+                        hide-details="auto"
+                        v-model="items.entry_visit_obs"
+                        :rules='(selectPayMethod == 5) ? [(v) => !!v || "Este campo es requerido"] : []'
+                    />
+                    <div class="entry-obs-submit-inline__btn-wrap d-flex align-center justify-center">
+                        <v-btn 
+                            block
+                            :loading="loading" 
+                            color="orange" 
+                            dark 
+                            class="font-weight-bold" 
+                            @click="entryRegisterLite">
+                            Registrar Entrada Rápida
+                        </v-btn>            
+                    </div>
+                </div>
             </v-col>
 
 
@@ -187,17 +277,6 @@
                     {{ errorMessage }}
                 </v-alert>
             </v-col>
-        </v-row>
-
-        <v-row no-gutters class="justify-center px-1">
-            <v-btn 
-                :loading="loading" 
-                color="orange" 
-                dark 
-                class="font-weight-bold" 
-                @click="entryRegisterLite">
-                Registrar Entrada Rápida
-            </v-btn>            
         </v-row>
     </v-form>            
   </div> 
@@ -219,6 +298,12 @@ import eventBus from '../../event-bus'
                 pagaEstacionamiento: false,
                 pagarALaSalida: false,
                 isMensualLocked: false,
+                states: [],
+                statesLoadAttempted: false,
+                editPartnerState: null,
+                editPartnerObservations: "",
+                savingPartnerObservations: false,
+                SOCIO_OBSERVADO_ID: 4,
                 other_visit_obs: "",
                 partner: null,
                 errorMessage: false,
@@ -250,9 +335,13 @@ import eventBus from '../../event-bus'
                 this.$router.push('/access')
                 return
             }
+            if (this.isPartnerObserved) {
+                await this.getEstados();
+                this.syncObservedPartnerEditFields();
+            }
             this.getTipos();
             this.getPaymentMethod();
-            if(this.partner.id_state == 8) this.selectPayMethod = 5
+            if (this.partnerResolvedStateId === 8) this.selectPayMethod = 5
         },
         watch: {
             selectPayMethod(){
@@ -270,6 +359,38 @@ import eventBus from '../../event-bus'
             }
         },
         computed:{
+            /** id_state efectivo en raíz del socio (la API/store a veces sólo usa partner.state.id_state).
+             *  No usar Number(partner.id_state) directo sobre null: Number(null) === 0. */
+            partnerResolvedStateId() {
+                if (!this.partner) return null;
+                const p = this.partner;
+                const raw = p.id_state;
+                if (
+                    raw !== undefined &&
+                    raw !== null &&
+                    raw !== '' &&
+                    String(raw).trim() !== ''
+                ) {
+                    const n = Number(raw);
+                    if (!Number.isNaN(n)) return n;
+                }
+                if (p.state != null && p.state.id_state !== undefined && p.state.id_state !== null) {
+                    const m = Number(p.state.id_state);
+                    if (!Number.isNaN(m)) return m;
+                }
+                return null;
+            },
+            isPartnerObserved() {
+                return this.partner != null && this.partnerResolvedStateId === this.SOCIO_OBSERVADO_ID;
+            },
+            statesLoadedEmpty() {
+                return (
+                    this.isPartnerObserved &&
+                    this.statesLoadAttempted &&
+                    Array.isArray(this.states) &&
+                    this.states.length === 0
+                );
+            },
             getCleanAlias(){
                 if(this.partner && this.partner.alias){
                     const alias = String(this.partner.alias)
@@ -296,6 +417,145 @@ import eventBus from '../../event-bus'
             }
         },
         methods:{
+            stateColorName(idState) {
+                if (idState == null) return 'grey';
+                switch (Number(idState)) {
+                    case 1: case 2: case 3: case 8: return 'green';
+                    case 4: return 'info';
+                    case 5: case 6: case 7: return 'red';
+                    default: return 'orange';
+                }
+            },
+            formatPartnerDate(date, format) {
+                if (date != null) {
+                    String(date).replace(/(T)/, ' ');
+                }
+                return date ? this.$moment(date, 'YYYY-MM-DD HH:mm:ss').format(format) : '';
+            },
+            getDaysSinceLastVisit(lastVisitDate) {
+                if (!lastVisitDate) return 'N/A';
+                const lastVisit = this.$moment(lastVisitDate);
+                const today = this.$moment();
+                const daysDiff = today.diff(lastVisit, 'days');
+                if (daysDiff === 0) return 'Hoy';
+                if (daysDiff === 1) return 'Hace 1 día';
+                return `Hace ${daysDiff} días`;
+            },
+            getLastVisitColor(lastVisitDate) {
+                if (!lastVisitDate) return 'grey';
+                const lastVisit = this.$moment(lastVisitDate);
+                const today = this.$moment();
+                const daysDiff = today.diff(lastVisit, 'days');
+                if (daysDiff === 0) return 'green';
+                if (daysDiff <= 7) return 'blue';
+                if (daysDiff <= 30) return 'orange';
+                return 'red';
+            },
+            syncObservedPartnerEditFields() {
+                if (
+                    !this.partner ||
+                    this.partnerResolvedStateId !== this.SOCIO_OBSERVADO_ID
+                )
+                    return;
+                this.editPartnerObservations =
+                    this.partner.observations !== undefined && this.partner.observations !== null
+                        ? String(this.partner.observations)
+                        : '';
+                this.editPartnerState =
+                    this.partner.state && this.partner.state.id_state != null
+                        ? Number(this.partner.state.id_state)
+                        : this.partnerResolvedStateId;
+            },
+            getEstados() {
+                const base = process.env.VUE_APP_DEGIRA || '';
+                const url = `${String(base).replace(/\/?$/, '/')}states/get`;
+                this.statesLoadAttempted = false;
+                return this.$http
+                    .get(url)
+                    .then((response) => {
+                        let raw = [];
+                        const body = response && response.data ? response.data : null;
+                        if (Array.isArray(body)) raw = body;
+                        else if (body && Array.isArray(body.data)) raw = body.data;
+                        else if (body && body.data != null && !Array.isArray(body.data))
+                            raw = [body.data];
+                        this.states = raw.map((s) => ({
+                            ...s,
+                            id_state:
+                                s && (s.id_state != null ? Number(s.id_state) : NaN),
+                            description: s && (s.description != null ? String(s.description) : ''),
+                        })).filter((s) => !Number.isNaN(s.id_state));
+                    })
+                    .catch((err) => {
+                        console.error('entryRegisterLite getEstados:', err);
+                        this.states = [];
+                        eventBus.$emit('toast', {
+                            show: true,
+                            text: 'No se pudieron cargar los estados para el socio observado.',
+                            color: 'warning',
+                        });
+                    })
+                    .finally(() => {
+                        this.statesLoadAttempted = true;
+                    });
+            },
+            buildPartnerUpdatePayload() {
+                const p = this.partner;
+                const visitType = p.id_visit_type_usualy;
+                return {
+                    alias: p.alias,
+                    partner_dni: p.partner_dni,
+                    partner_name: p.partner_name,
+                    partner_birthdate: p.partner_birthdate
+                        ? this.$moment(p.partner_birthdate, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY')
+                        : undefined,
+                    partner_phone: p.partner_phone || null,
+                    affiliate_dni: visitType === 2 ? p.affiliate_dni : undefined,
+                    affiliate_name: visitType === 2 ? p.affiliate_name : undefined,
+                    affiliate_birthdate:
+                        visitType === 2 && p.affiliate_birthdate
+                            ? this.$moment(p.affiliate_birthdate, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY')
+                            : undefined,
+                    affiliate_phone: visitType === 2 ? p.affiliate_phone : undefined,
+                    id_visit_type_usualy: visitType,
+                    id_state: Number(this.editPartnerState),
+                    observations: this.editPartnerObservations,
+                    suggest_membership_amount: p.suggest_membership_amount,
+                };
+            },
+            savePartnerObservationState() {
+                if (!this.partner || !this.partner.id_partner) return;
+                this.savingPartnerObservations = true;
+                const vm = this;
+                const data = this.buildPartnerUpdatePayload();
+                this.$http
+                    .put(`${process.env.VUE_APP_PARTNERS_UPDATE}/${this.partner.id_partner}`, data)
+                    .then(async (response) => {
+                        if (response) {
+                            eventBus.$emit('toast', {
+                                show: true,
+                                text: 'Estado y observaciones actualizados',
+                                color: 'success',
+                            });
+                            await vm.verifyPartnerStatus();
+                            vm.syncObservedPartnerEditFields();
+                            if (vm.partnerResolvedStateId === 8) vm.selectPayMethod = 5;
+                            vm.getPrice();
+                        }
+                        vm.savingPartnerObservations = false;
+                    })
+                    .catch((error) => {
+                        console.log(error.response);
+                        eventBus.$emit('toast', {
+                            show: true,
+                            text: error.response && error.response.data && error.response.data.message
+                                ? error.response.data.message
+                                : 'No se pudo actualizar el socio',
+                            color: 'red',
+                        });
+                        vm.savingPartnerObservations = false;
+                    });
+            },
             getMethodLine1(text){
                 if(!text) return ''
                 // Dividir por el paréntesis o por espacios largos
@@ -407,21 +667,58 @@ import eventBus from '../../event-bus'
             },
             async loadPartnerData(){
                 this.partner = this.$store.state.partner;
+                this.normalizePartnerRootState(this.partner);
                 console.log(this.partner, "partner")
                 // Si hay un partner, verificar su estado actual desde el backend
-                if(this.partner && this.partner.id_partner){
+                if (
+                    this.partner &&
+                    (this.partner.id_partner ||
+                        this.partner.partner_dni ||
+                        this.partner.affiliate_dni)
+                ) {
                     await this.verifyPartnerStatus()
                 }
             },
             verifyPartnerStatus(){
                 let vm = this
-                // Verificar el estado actual del socio desde el backend
-                const dni = this.partner.partner_dni || this.partner.affiliate_dni
-                if(dni){
-                    return this.$http.get(`${process.env.VUE_APP_PARTNERS}?dni=${dni}&page=1&pageSize=10`)
+                const idP =
+                    vm.partner &&
+                    vm.partner.id_partner != null &&
+                    String(vm.partner.id_partner).trim() !== ''
+                        ? Number(vm.partner.id_partner)
+                        : NaN;
+                const dniRaw = vm.partner.partner_dni || vm.partner.affiliate_dni
+                const dniStr =
+                    dniRaw != null && String(dniRaw).trim() !== '' ? String(dniRaw).trim() : ''
+
+                const qs = new URLSearchParams()
+                qs.set('page', '1')
+                qs.set('pageSize', '10')
+
+                const hasPid = Number.isFinite(idP) && idP > 0
+                if (hasPid) qs.set('id_partner', String(idP))
+
+                if (dniStr !== '') qs.set('dni', dniStr)
+
+                /** Sin id_partner ni dni no hay manera segura de verificar contra el servidor */
+                if (!hasPid && dniStr === '') return Promise.resolve(true)
+
+                return this.$http
+                    .get(`${process.env.VUE_APP_PARTNERS}?${qs.toString()}`)
                         .then((res) => {
                             if(res && res.data && res.data.data){
                                 const currentPartner = res.data.data
+                                if (
+                                    hasPid &&
+                                    currentPartner &&
+                                    Number(currentPartner.id_partner) !== idP
+                                ) {
+                                    console.warn(
+                                        'entryRegisterLite verifyPartnerStatus: respuesta con id_partner distinto, se conserva socio del store.'
+                                    )
+                                    return true
+                                }
+                                vm.normalizePartnerRootState(currentPartner)
                                 // Si el socio ya está en el establecimiento, actualizar el partner y redirigir
                                 if(currentPartner.partner_in_establishment){
                                     vm.partner = currentPartner
@@ -432,7 +729,15 @@ import eventBus from '../../event-bus'
                                 } else {
                                     // Actualizar el partner con los datos más recientes
                                     vm.partner = currentPartner
+                                    vm.normalizePartnerRootState(vm.partner)
                                     vm.$store.commit('setPartner', currentPartner)
+                                    if (vm.partnerResolvedStateId === vm.SOCIO_OBSERVADO_ID) {
+                                        if (!vm.states || vm.states.length === 0) {
+                                            vm.getEstados().then(() => vm.syncObservedPartnerEditFields())
+                                        } else {
+                                            vm.syncObservedPartnerEditFields()
+                                        }
+                                    }
                                     return true // Indica que puede continuar
                                 }
                             }
@@ -442,14 +747,28 @@ import eventBus from '../../event-bus'
                             console.log('Error al verificar estado del socio:', err)
                             return true // En caso de error, permitir continuar
                         });
+            },
+            /** Replica id_state en la raíz del objeto socio si falta ahí pero viene dentro de state. */
+            normalizePartnerRootState(partnerObj) {
+                if (!partnerObj) return;
+                const raw = partnerObj.id_state;
+                const rootMissing =
+                    raw === undefined ||
+                    raw === null ||
+                    raw === '' ||
+                    String(raw).trim() === '';
+                if (!rootMissing) return;
+                const nested =
+                    partnerObj.state != null ? Number(partnerObj.state.id_state) : NaN;
+                if (!Number.isNaN(nested)) {
+                    this.$set(partnerObj, 'id_state', nested);
                 }
-                return Promise.resolve(true)
             },
             icon(){
               let icon = {icon: 'mdi-qrcode-scan', color: 'orange'}
               if(this.partner != null){
                   if(this.partner){
-                      switch (this.partner.state.id_state) {
+                      switch (this.partnerResolvedStateId) {
                           case 1: case 2: case 3: case 8:
                               icon = { color: 'green', icon: 'mdi-check-circle' }
                               break;
@@ -681,3 +1000,79 @@ import eventBus from '../../event-bus'
     }
 </script>
 
+<style scoped>
+.observed-banner__line {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 0.75rem;
+    line-height: 1.35;
+    width: 100%;
+    box-sizing: border-box;
+}
+.observed-banner__left {
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 0.25rem 0.35rem;
+}
+.observed-banner__chip-only {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+@media (max-width: 599px) {
+    .observed-banner__line {
+        flex-wrap: wrap;
+    }
+    .observed-banner__chip-only {
+        width: 100%;
+        margin-left: 0;
+        display: flex;
+        justify-content: flex-end;
+    }
+}
+.observed-banner__lead {
+    white-space: nowrap;
+}
+.observed-partner-alert >>> .v-alert__wrapper {
+    width: 100%;
+}
+.observed-partner-alert >>> .v-alert__content {
+    flex: 1 1 0%;
+    min-width: 0;
+}
+.entry-extras-inline {
+    gap: 0.25rem 1rem;
+    row-gap: 0.5rem;
+}
+.entry-extras-inline__amount {
+    min-width: 12rem;
+    flex: 1 1 200px;
+    max-width: 100%;
+}
+.entry-obs-submit-inline {
+    gap: 0 0.75rem;
+    row-gap: 0.65rem;
+    align-items: stretch;
+}
+.entry-obs-submit-inline__textarea {
+    flex: 1 1 18rem;
+    min-width: 0;
+    max-width: 100%;
+}
+.entry-obs-submit-inline__btn-wrap {
+    flex: 0 0 auto;
+    width: 100%;
+}
+@media (min-width: 960px) {
+    .entry-obs-submit-inline {
+        flex-wrap: nowrap;
+        align-items: center;
+    }
+    .entry-obs-submit-inline__btn-wrap {
+        width: auto;
+        justify-content: flex-start;
+        min-width: 14rem;
+    }
+}
+</style>

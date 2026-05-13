@@ -317,6 +317,39 @@ export default {
                             isHtml: true,
                             goToHome: false,
                             closeDialog: true,
+                            continueSellingRoute: '/productsSalePickPartner',
+                            goTo: [
+                              {
+                                title: 'Ver consumos de otros socios',
+                                icon: 'mdi-magnify',
+                                route: '/verConsumos',
+                              },
+                            ],
+                            exitClubPartner: vm.partner
+                                ? (() => {
+                                      const excludeId =
+                                          vm.itemDelete && vm.itemDelete.id_ticket_detail != null
+                                              ? vm.itemDelete.id_ticket_detail
+                                              : null;
+                                      const lines =
+                                          excludeId != null
+                                              ? vm.items.filter(
+                                                    (i) => i.id_ticket_detail !== excludeId
+                                                )
+                                              : vm.items;
+                                      const totalSocio = lines.reduce((t, item) => {
+                                          if (item.payed != null) {
+                                              return (
+                                                  t +
+                                                  parseFloat(item.price || 0) *
+                                                      parseInt(item.quantity || 0, 10)
+                                              );
+                                          }
+                                          return t;
+                                      }, 0);
+                                      return { ...vm.partner, total: totalSocio };
+                                  })()
+                                : null,
                             text: [ {label: 'Brazalete', 
                                       value: response.data.data.id_bracelet, 
                                       show: true

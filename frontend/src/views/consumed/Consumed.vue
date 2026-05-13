@@ -212,8 +212,13 @@
           :tipoVisita="tipoVisita"
           :partner="partner"
           :loadExcel="loadExcel"
-          @clickVolver="items= []"
-          @clickAnular="itemDelete = $event; dialogDelete = true"
+          :selection-detail-ids="selectedDetailIds"
+          @clickVolver="clearConsumedView"
+          @clickAnular="openAnularDialog([$event])"
+          @bulk-anular="openAnularSelection"
+          @toggle-detail-select="toggleDetailSelect"
+          @toggle-all-detail-select="toggleSelectAllAnulables"
+          @clear-detail-selection="selectedDetailIds = []"
           @searchBrazalete="brazalete = $event; Searchitems(brazalete)"
           @exportExcel="exportToExcel">
         </ConsumedLarge>
@@ -225,18 +230,23 @@
           :tipoVisita="tipoVisita"
           :partner="partner"
           :loadExcel="loadExcel"
-          @clickVolver="items= []"
-          @clickAnular="itemDelete = $event; dialogDelete = true"
+          :selection-detail-ids="selectedDetailIds"
+          @clickVolver="clearConsumedView"
+          @clickAnular="openAnularDialog([$event])"
+          @bulk-anular="openAnularSelection"
+          @toggle-detail-select="toggleDetailSelect"
+          @toggle-all-detail-select="toggleSelectAllAnulables"
+          @clear-detail-selection="selectedDetailIds = []"
           @exportExcel="exportToExcel">
         </ConsumedSmall>
       </div>
         
       <v-dialog 
         v-model="dialogDelete" max-width="500px">
-          <v-card v-if="itemDelete !== null">
+          <v-card v-show="itemsPendingAnulacion.length > 0">
             <v-toolbar color="orange" class="rounded-b-0" dark elevation="0">
               <v-icon class="mx-1">mdi-delete</v-icon>
-              <span class="font-weight-bold">Anular Consumo</span>
+              <span class="font-weight-bold">Anular Consumo{{ itemsPendingAnulacion.length > 1 ? 's' : '' }}</span>
               <v-spacer></v-spacer>
               <v-btn 
                 icon 
@@ -257,7 +267,12 @@
                 :rules='[(v) => !!v || "El campo es requerido"]'
                 v-model="motivo"
                 />
-                <span style="font-size: 15px">¿Está seguro que desea anular este item?</span>
+                <span style="font-size: 15px">
+                  ¿Está seguro que desea anular {{ itemsPendingAnulacion.length === 1 ? 'este ítem' : 'los ' + itemsPendingAnulacion.length + ' ítems seleccionados' }}?
+                </span>
+                <div v-if="itemsPendingAnulacion.length > 1" class="text-left grey--text text--darken-2 text-caption mt-3" style="max-height:120px;overflow-y:auto;">
+                  <div v-for="(row, ix) in itemsPendingAnulacion" :key="'pend'+ix">{{ row.description }} × {{ row.quantity }}</div>
+                </div>
             </v-form>
 
             <v-card-actions>
@@ -276,7 +291,7 @@
                   dark 
                   color="orange" 
                   elevation="0" 
-                  @click="deleteItem" 
+                  @click="deletePendingItems" 
                   :loading="loadAnulacion">SI, Anular
                 </v-btn>
             </v-card-actions>
@@ -296,7 +311,8 @@ import { downloadFileRN } from '../../helpers/reactNative'
     components: {ConsumedLarge, ConsumedSmall},
 
     data: () => ({
-      itemDelete: null,
+      itemsPendingAnulacion: [],
+      selectedDetailIds: [],
       dialog: false,
       dialogDelete: false,
       load: false,
@@ -332,14 +348,14 @@ import { downloadFileRN } from '../../helpers/reactNative'
 
     computed: {
       cantidad () {
-        console.log(this.itemDelete)
-        let existentes= this.itemDelete.quantity
+        const first = this.itemsPendingAnulacion[0]
+        if (!first || first.quantity == null) return []
+        let existentes = first.quantity
         let options = []
-        for(var i = 1; i <= existentes; i++) {
+        for (var i = 1; i <= existentes; i++) {
           options.push(i)
         }
         return options
-
       },
       itemsClean(){
         return this.items.filter((item) => item.quantity > 0)
@@ -373,6 +389,18 @@ import { downloadFileRN } from '../../helpers/reactNative'
     },
 
     watch: {
+      items: {
+        handler () {
+          const validIds = new Set(
+            this.items
+              .filter((item) => item.quantity > 0)
+              .map((item) => item.id_ticket_detail)
+              .filter((id) => id != null)
+          )
+          this.selectedDetailIds = this.selectedDetailIds.filter((id) => validIds.has(id))
+        },
+        deep: true,
+      },
       dialog (val) {
         val || this.close()
       },
@@ -409,7 +437,7 @@ import { downloadFileRN } from '../../helpers/reactNative'
         if(brazalete){
           let vm = this
           this.load = true
-            this.$http.get(process.env.VUE_APP_DEGIRA+"consumptions/get/consume?id_bracelet="+brazalete)
+            this.$http.get(process.env.VUE_APP_DEGIRA+"consumptions/get/consume?id_bracelet="+encodeURIComponent(String(brazalete)))
             .then((response)=>{
               if(response.data.data.products.length > 0){
                 vm.items = response.data.data.products
@@ -444,54 +472,126 @@ import { downloadFileRN } from '../../helpers/reactNative'
         this.dialog = true
       },
 
-      deleteItem () {
-        console.log(this.itemDelete)
-        let data = {
-            "cart": [ {...this.itemDelete,
-                        cantidad: this.itemDelete.quantity*-1, 
-                        price : parseFloat(this.itemDelete.price) * -1
-                      } ],
-            "total_consumed": parseFloat(this.itemDelete.price)* this.selectCantidad *-1,
-            "id_bracelet" : this.itemDelete.id_bracelet,
-            "ticket_observations": this.motivo,
-            'id_ticket_detail': this.itemDelete.id_ticket_detail
-        }
+      deletePendingItems () {
+        if (!(this.$refs.motivoAnulacion && this.$refs.motivoAnulacion.validate())) return
+        const pending = [...this.itemsPendingAnulacion]
+        if (!pending.length) return
         this.loadAnulacion = true
-        let vm = this
-        this.$http.post(process.env.VUE_APP_DEGIRA+"consumptions/create",data)
-        .then((response) => { 
-            if(response){
-              vm.Searchitems(vm.itemDelete.id_bracelet)
-              vm.dialogDelete = false
-              let dialog = {  show: true, 
-                              title: "Consumo eliminado correctamente", 
-                              type: 'success',
-                              isHtml: true,
-                              goToHome: false,
-                              closeDialog: true,
-                              text: [ {label: 'Tarjeta', 
-                                        value: response.data.data.id_bracelet, 
-                                        show: true
-                                      },
-                                      {label: 'Consumo Eliminado', 
-                                        value: response.data.data.products[0].description + ' x'+ response.data.data.products[0].cantidad * -1 + ' u.', 
-                                        show: true
-                                      },
-                                      {label: 'Motivo de Anulacion', 
-                                        value: response.data.data.ticket_observation,  
-                                        show: true
-                                      },
-                                  ]
-                            }
-                eventBus.$emit('ConfirmDialog', dialog)
+        const vm = this
+        const braceletKey = pending[0].id_bracelet
+        let lastResponse = null
+        const excludeIdsAfter = pending.map((i) => i.id_ticket_detail).filter((id) => id != null)
+        pending
+          .reduce(
+            (chain, item) =>
+              chain.then(() => {
+                const data = {
+                  cart: [
+                    {
+                      ...item,
+                      cantidad: item.quantity * -1,
+                      price: parseFloat(item.price) * -1
+                    }
+                  ],
+                  total_consumed:
+                    parseFloat(item.price) * parseInt(item.quantity || 1, 10) * -1,
+                  id_bracelet: item.id_bracelet,
+                  ticket_observations: vm.motivo,
+                  id_ticket_detail: item.id_ticket_detail
+                }
+                return vm.$http.post(process.env.VUE_APP_DEGIRA + 'consumptions/create', data).then((r) => {
+                  lastResponse = r
+                  return r
+                })
+              }),
+            Promise.resolve()
+          )
+          .then(() => {
+            vm.Searchitems(braceletKey)
+            vm.dialogDelete = false
+            vm.selectedDetailIds = []
+            const excluded = new Set(excludeIdsAfter)
+            const summaryLines = pending.map((i) => `${i.description} × ${i.quantity}`).slice(0, 5)
+            const summaryText =
+              pending.length <= 5
+                ? summaryLines.join('; ')
+                : `${summaryLines.join('; ')}… (+${pending.length - 5} más)`
+            let dialog = {
+              show: true,
+              title:
+                pending.length === 1
+                  ? 'Consumo eliminado correctamente'
+                  : pending.length + ' consumos eliminados correctamente',
+              type: 'success',
+              isHtml: true,
+              goToHome: false,
+              closeDialog: true,
+              continueSellingRoute: '/productsSalePickPartner',
+              goTo: [
+                {
+                  title: 'Ver consumos de otros socios',
+                  icon: 'mdi-magnify',
+                  route: '/verConsumos'
+                }
+              ],
+              exitClubPartner: vm.partner
+                ? (() => {
+                    const lines = vm.items.filter((i) => !excluded.has(i.id_ticket_detail))
+                    const totalSocio = lines.reduce((t, row) => {
+                      if (row.payed != null) {
+                        return (
+                          t + parseFloat(row.price || 0) * parseInt(row.quantity || 0, 10)
+                        )
+                      }
+                      return t
+                    }, 0)
+                    return { ...vm.partner, total: totalSocio }
+                  })()
+                : null,
+              text: [
+                {
+                  label: 'Tarjeta',
+                  value: lastResponse.data.data.id_bracelet,
+                  show: true
+                },
+                pending.length === 1
+                  ? {
+                      label: 'Consumo Eliminado',
+                      value:
+                        lastResponse.data.data.products[0].description +
+                        ' x' +
+                        lastResponse.data.data.products[0].cantidad * -1 +
+                        ' u.',
+                      show: true
+                    }
+                  : {
+                      label: 'Consumos eliminados',
+                      value: summaryText,
+                      show: true
+                    },
+                {
+                  label: 'Motivo de Anulacion',
+                  value: lastResponse.data.data.ticket_observation,
+                  show: true
+                }
+              ]
             }
-            vm.loadAnulacion = false
-        }).catch((error)=>{
+            eventBus.$emit('ConfirmDialog', dialog)
+          })
+          .catch((error) => {
             console.log(error.response)
-            eventBus.$emit('toast', { show: true, text: (error.response.data.message) ? error.response.data.message :  "No se ha podido eliminar el consumo", color: "red" })
-            vm.loadAnulacion=false
-        })
-        
+            eventBus.$emit('toast', {
+              show: true,
+              text:
+                error.response && error.response.data && error.response.data.message
+                  ? error.response.data.message
+                  : 'No se ha podido eliminar el consumo',
+              color: 'red'
+            })
+          })
+          .finally(() => {
+            vm.loadAnulacion = false
+          })
       },
 
       close () {
@@ -504,10 +604,50 @@ import { downloadFileRN } from '../../helpers/reactNative'
 
       closeDelete () {
         this.dialogDelete = false
+        this.itemsPendingAnulacion = []
         this.$nextTick(() => {
           this.editedItem = Object.assign({}, this.defaultItem)
           this.editedIndex = -1
         })
+      },
+      clearConsumedView () {
+        this.items = []
+        this.partner = null
+        this.selectedDetailIds = []
+      },
+      openAnularDialog (items) {
+        this.itemsPendingAnulacion = items.filter(Boolean)
+        this.motivo = ''
+        if (this.itemsPendingAnulacion.length > 0) this.dialogDelete = true
+      },
+      openAnularSelection () {
+        const set = new Set(this.selectedDetailIds)
+        const sel = this.itemsClean.filter((item) => item.id_ticket_detail != null && set.has(item.id_ticket_detail))
+        if (!sel.length) return
+        this.openAnularDialog(sel)
+      },
+      toggleDetailSelect (detailId) {
+        if (detailId == null) return
+        const i = this.selectedDetailIds.indexOf(detailId)
+        if (i > -1) this.selectedDetailIds.splice(i, 1)
+        else this.selectedDetailIds.push(detailId)
+      },
+      toggleSelectAllAnulables () {
+        const anulables = this.itemsClean.filter((item) => this.rowEligibleForAnnul(item))
+        const ids = anulables.map((i) => i.id_ticket_detail).filter((id) => id != null)
+        const allSelected = ids.length > 0 && ids.every((id) => this.selectedDetailIds.includes(id))
+        if (allSelected) {
+          this.selectedDetailIds = this.selectedDetailIds.filter((id) => !ids.includes(id))
+        } else {
+          this.selectedDetailIds = [...new Set([...this.selectedDetailIds, ...ids])]
+        }
+      },
+      rowEligibleForAnnul (item) {
+        return (
+          item.payed == 0 &&
+          item.quantity > 0 &&
+          (this.roles.includes(1) || this.roles.includes(2) || this.roles.includes(3))
+        )
       },
 
       save () {
@@ -568,7 +708,7 @@ import { downloadFileRN } from '../../helpers/reactNative'
                     const visita = vm.visitas[i];
                     try {
                       const consumeResponse = await vm.$http.get(
-                        process.env.VUE_APP_DEGIRA+"consumptions/get/consume?id_bracelet="+visita.id_bracelet_1
+                        process.env.VUE_APP_DEGIRA+"consumptions/get/consume?id_bracelet="+encodeURIComponent(String(visita.id_bracelet_1))
                       );
                       const products = consumeResponse.data.data?.products || [];
                       visita.hasConsumos = products.length > 0;
@@ -661,7 +801,7 @@ import { downloadFileRN } from '../../helpers/reactNative'
           const visita = this.visitas[i];
           try {
             const consumeResponse = await this.$http.get(
-              process.env.VUE_APP_DEGIRA+"consumptions/get/consume?id_bracelet="+visita.id_bracelet_1
+              process.env.VUE_APP_DEGIRA+"consumptions/get/consume?id_bracelet="+encodeURIComponent(String(visita.id_bracelet_1))
             );
             const products = consumeResponse.data.data?.products || [];
             visita.hasConsumos = products.length > 0;
@@ -705,7 +845,7 @@ import { downloadFileRN } from '../../helpers/reactNative'
         this.$router.go(-1);
       },
       goToProductsSale() {
-        this.$router.push('/productsSale');
+        this.$router.push('/productsSalePickPartner');
       },
       goToActiveVisits() {
         this.$router.push('/activeVisits');

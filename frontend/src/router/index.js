@@ -65,6 +65,28 @@ const routes = [
     props: true,
   },
   {
+    path: "/productsSalePickPartner",
+    name: "productsSalePickPartner",
+    meta: {
+      title: "Cargar consumos",
+      requiresAuth: true,
+      requiresAccess: true
+    },
+    component: () => import("../views/consumed/sale/ProductsSalePickPartner.vue"),
+    props: true,
+  },
+  {
+    path: "/verConsumos",
+    name: "verConsumosPickPartner",
+    meta: {
+      title: "Ver consumos",
+      requiresAuth: true,
+      requiresAccess: true
+    },
+    component: () => import("../views/consumed/sale/ConsumedPickPartner.vue"),
+    props: true,
+  },
+  {
     path: "/lockers",
     name: "lockers",
     meta: {

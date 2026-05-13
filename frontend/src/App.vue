@@ -38,7 +38,9 @@
                         :isHtml="(dialog.isHtml)"
                         :goToHome="dialog.goToHome"
                         :closeDialog="dialog.closeDialog"
-                        :cardNumber="dialog.cardNumber">
+                        :continueSellingRoute="dialog.continueSellingRoute"
+                        :cardNumber="dialog.cardNumber"
+                        :exitClubPartner="dialog.exitClubPartner">
           </ModalConfirm>
         </v-card>
       </v-dialog>

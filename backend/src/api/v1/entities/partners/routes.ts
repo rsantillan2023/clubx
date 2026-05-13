@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { adminRoleValidator, cajaRoleValidator, jwtValidator, validRole } from '../../middlewares';
-import { getPartnerByDni, getPartnerInside, getPartnerSearcher, membershipReactivation, partnerMembershipChecker, postPartnerDischarge, updatePartner, postPartnerLiteDischarge, getPartners, getHistoricalVisitsController, getHistogramController, getDatesWithVisitsController, getVisitsWithConsumptionsController, getDatesWithConsumptionsController, getMensualVisitTypeIdController, postMensualSchemeController, patchPartnerNoPagaController, patchPartnerVisitTypeController } from './controllers';
+import { getPartnerByDni, getPartnerInside, getPartnerSearcher, membershipReactivation, partnerMembershipChecker, postPartnerDischarge, updatePartner, postPartnerLiteDischarge, getPartners, getHistoricalVisitsController, getHistoricalNonCashPaymentsController, getHistogramController, getDatesWithVisitsController, getVisitsWithConsumptionsController, getDatesWithConsumptionsController, getMensualVisitTypeIdController, postMensualSchemeController, patchPartnerNoPagaController, patchPartnerVisitTypeController } from './controllers';
 
 const routes = Router();
 
@@ -24,6 +24,8 @@ routes.get('/list', [jwtValidator, adminRoleValidator, cajaRoleValidator, validR
 
 routes.get('/historical', [jwtValidator, adminRoleValidator, cajaRoleValidator, validRole], getHistoricalVisitsController)
 
+routes.get('/historical-non-cash-payments', [jwtValidator, adminRoleValidator, cajaRoleValidator, validRole], getHistoricalNonCashPaymentsController)
+
 routes.get('/histogram', [jwtValidator, adminRoleValidator, cajaRoleValidator, validRole], getHistogramController)
 
 routes.get('/dates-with-visits', [jwtValidator, adminRoleValidator, cajaRoleValidator, validRole], getDatesWithVisitsController)
@@ -35,7 +37,7 @@ routes.get('/dates-with-consumptions', [jwtValidator, adminRoleValidator, cajaRo
 // Esquema de pago mensual (solo admin)
 routes.get('/mensual-visit-type-id', [jwtValidator, adminRoleValidator, validRole], getMensualVisitTypeIdController)
 routes.post('/mensual-scheme', [jwtValidator, adminRoleValidator, validRole], postMensualSchemeController)
-routes.patch('/:id_partner/no-paga', [jwtValidator, adminRoleValidator, validRole], patchPartnerNoPagaController)
+routes.patch('/:id_partner/no-paga', [jwtValidator, adminRoleValidator, cajaRoleValidator, validRole], patchPartnerNoPagaController)
 routes.patch('/:id_partner/visit-type', [jwtValidator, adminRoleValidator, cajaRoleValidator, validRole], patchPartnerVisitTypeController)
 
 export = routes;
